@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Valuation Copilot · WEGE3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: #f0f2f5;
+    color: #0f172a;
+    -webkit-font-smoothing: antialiased;
+  }
+  input[type=range] {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 3px; border-radius: 4px;
+    background: #e2e8f0; outline: none; cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 13px; height: 13px;
+    border-radius: 50%; background: #2563eb;
+    border: 2px solid #fff; box-shadow: 0 1px 4px rgba(37,99,235,.35);
+    cursor: pointer;
+  }
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+  a { cursor: pointer; }
+  button:hover { opacity: 0.88; }
+
+  /* Tweaks panel slider override */
+  .tweak-slider input[type=range] { background: #334155; }
+
+  @media (max-width: 900px) {
+    .main-grid { grid-template-columns: 1fr !important; }
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="dashboard-data.js?v=2"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="dashboard-nav.jsx"></script>
+<script type="text/babel" src="dashboard-charts.jsx"></script>
+<script type="text/babel" src="dashboard-right.jsx"></script>
+
+<script type="text/babel">
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "accentColor": "#2563eb",
+  "darkMode": false,
+  "compactDensity": false,
+  "showSensitivity": true
+}/*EDITMODE-END*/;
+
+function App() {
+  const [tweaks, setTweak] = useTweaks(TWEAK_DEFAULTS);
+
+  const [activeTab, setActiveTab] = React.useState("Visão Geral");
+  const [assumptions, setAssumptions] = React.useState({ ...DEFAULT_ASSUMPTIONS });
+  const [toastVisible, setToastVisible] = React.useState(false);
+  const [dcf, setDcf] = React.useState({ ...DCF });
+
+  const accent = tweaks.accentColor;
+  const isDark = tweaks.darkMode;
+  const isCompact = tweaks.compactDensity;
+
+  // Inject accent color CSS variable
+  React.useEffect(() => {
+    document.documentElement.style.setProperty('--accent', accent);
+  }, [accent]);
+
+  const handleAssumptionChange = (key, val) => {
+    setAssumptions(prev => ({ ...prev, [key]: val }));
+  };
+
+  const handleRecalculate = () => {
+    // Simulate recalculation with a simple heuristic
+    const waccDelta  = (assumptions.wacc - DEFAULT_ASSUMPTIONS.wacc) / DEFAULT_ASSUMPTIONS.wacc;
+    const growthDelta = (assumptions.revenueCAGR - DEFAULT_ASSUMPTIONS.revenueCAGR) / DEFAULT_ASSUMPTIONS.revenueCAGR;
+    const marginDelta = (assumptions.ebitMargin - DEFAULT_ASSUMPTIONS.ebitMargin) / DEFAULT_ASSUMPTIONS.ebitMargin;
+    const newIntrinsic = DCF.intrinsicValue * (1 - waccDelta * 0.8 + growthDelta * 0.5 + marginDelta * 0.3);
+    const newUpside = ((newIntrinsic / DCF.currentPrice) - 1) * 100;
+    setDcf({
+      ...DCF,
+      intrinsicValue: parseFloat(newIntrinsic.toFixed(2)),
+      impliedUpside: parseFloat(newUpside.toFixed(1)),
+    });
+    setToastVisible(true);
+    setTimeout(() => setToastVisible(false), 2500);
+  };
+
+  const pageStyle = {
+    minHeight: "100vh",
+    background: isDark ? "#0f172a" : "#f0f2f5",
+    transition: "background .3s",
+  };
+
+  const contentPad = isCompact ? "12px 20px" : "18px 24px";
+
+  return (
+    <div style={pageStyle}>
+      {/* Nav */}
+      <NavBar />
+
+      {/* Company Header */}
+      <CompanyHeader company={COMPANY} />
+
+      {/* Metrics Strip */}
+      <MetricsRow metrics={METRICS} />
+
+      {/* Tab Bar */}
+      <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
+
+      {/* Main Content */}
+      <div style={{ padding: contentPad }}>
+        {activeTab === "Visão Geral" && (
+          <div
+            className="main-grid"
+            style={{ display: "grid", gridTemplateColumns: "1fr 380px", gap: 14, alignItems: "start" }}
+          >
+            {/* Left Column */}
+            <div>
+              <HistoricalChart data={FINANCIALS} />
+              <DCFSummary dcf={dcf} />
+              {tweaks.showSensitivity && (
+                <SensitivityTable
+                  waccVals={WACC_VALS}
+                  tgVals={TG_VALS}
+                  matrix={SENSITIVITY}
+                  currentPrice={COMPANY.price}
+                />
+              )}
+            </div>
+
+            {/* Right Column */}
+            <div>
+              <AssumptionsPanel
+                assumptions={assumptions}
+                onChange={handleAssumptionChange}
+                onRecalculate={handleRecalculate}
+              />
+              <MultiplesTable data={MULTIPLES} />
+              <NewsPanel news={NEWS} />
+            </div>
+          </div>
+        )}
+
+        {activeTab === "Financeiros" && (
+          <div style={placeholderStyles.wrap}>
+            <HistoricalChart data={FINANCIALS} />
+            <div style={placeholderStyles.tabNote}>
+              Demonstrativos financeiros completos (DRE, Balanço Patrimonial, DFC) em breve.
+            </div>
+          </div>
+        )}
+
+        {activeTab === "Valuation" && (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 380px", gap: 14 }}>
+            <div>
+              <DCFSummary dcf={dcf} />
+              {tweaks.showSensitivity && (
+                <SensitivityTable waccVals={WACC_VALS} tgVals={TG_VALS} matrix={SENSITIVITY} currentPrice={COMPANY.price} />
+              )}
+            </div>
+            <div>
+              <AssumptionsPanel assumptions={assumptions} onChange={handleAssumptionChange} onRecalculate={handleRecalculate} />
+            </div>
+          </div>
+        )}
+
+        {activeTab === "Notícias" && (
+          <div style={{ maxWidth: 700 }}>
+            <NewsPanel news={NEWS} />
+          </div>
+        )}
+
+        {activeTab === "Premissas" && (
+          <div style={{ maxWidth: 500 }}>
+            <AssumptionsPanel assumptions={assumptions} onChange={handleAssumptionChange} onRecalculate={handleRecalculate} />
+          </div>
+        )}
+      </div>
+
+      {/* Toast */}
+      <RecalcToast visible={toastVisible} />
+
+      {/* Tweaks Panel */}
+      <TweaksPanel>
+        <TweakSection label="Tema">
+          <TweakColor id="accentColor" label="Accent Color" />
+          <TweakToggle id="darkMode" label="Fundo Escuro" />
+          <TweakToggle id="compactDensity" label="Densidade Compacta" />
+        </TweakSection>
+        <TweakSection label="Seções">
+          <TweakToggle id="showSensitivity" label="Mostrar Sensibilidade" />
+        </TweakSection>
+      </TweaksPanel>
+    </div>
+  );
+}
+
+const placeholderStyles = {
+  wrap: { maxWidth: 900 },
+  tabNote: {
+    marginTop: 14, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10,
+    padding: "20px 24px", fontSize: 13, color: "#64748b", textAlign: "center",
+  },
+};
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<App />);
+</script>
+
+<template id="__bundler_thumbnail">
+  <svg viewBox="0 0 120 80" xmlns="http://www.w3.org/2000/svg">
+    <rect width="120" height="80" fill="#0f172a"/>
+    <rect x="8" y="8" width="104" height="12" rx="3" fill="#1e293b"/>
+    <rect x="8" y="26" width="67" height="22" rx="3" fill="#1e293b"/>
+    <rect x="8" y="54" width="32" height="18" rx="3" fill="#2563eb" opacity=".8"/>
+    <rect x="44" y="54" width="31" height="18" rx="3" fill="#1e293b"/>
+    <rect x="81" y="26" width="31" height="46" rx="3" fill="#1e293b"/>
+  </svg>
+</template>
+</body>
+</html>
