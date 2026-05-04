@@ -1,4 +1,8 @@
-# Valuation Copilot BR
+<h1 align="center">Valuation Copilot BR</h1>
+
+<p align="center">
+  <img src="public/logo/logo-icon.svg" width="80"/>
+</p>
 
 Plataforma web para análise financeira e valuation automatizado de empresas brasileiras listadas na B3.
 
@@ -93,10 +97,17 @@ src/
 ├── data/
 │   └── wege3.ts
 │
-└── lib/
-    ├── formatters.ts
-    └── valuation/
-        └── dcf.ts
+├── lib/
+│   ├── formatters.ts
+│   └── valuation/
+│       └── dcf.ts
+│
+└── public/
+    └── logo/
+    ├── logo-full.svg
+    ├── logo-icon.svg
+    ├── logo-icon-monochrome.svg
+    └── favicon.svg
 ```
 
 ---
