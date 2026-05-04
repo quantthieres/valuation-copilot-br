@@ -4,6 +4,9 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Valuation Copilot · WEGE3",
   description: "Dashboard de valuation automatizado para o mercado brasileiro",
+  icons: {
+    icon: "/logo/favicon.svg",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

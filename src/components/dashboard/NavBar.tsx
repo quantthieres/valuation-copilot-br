@@ -9,13 +9,11 @@ export default function NavBar() {
     <header style={styles.header}>
       {/* Logo */}
       <div style={styles.logo}>
-        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-          <rect x="2" y="2" width="7" height="7" rx="1.5" fill="#2563eb"/>
-          <rect x="11" y="2" width="7" height="7" rx="1.5" fill="#2563eb" opacity="0.5"/>
-          <rect x="2" y="11" width="7" height="7" rx="1.5" fill="#2563eb" opacity="0.5"/>
-          <rect x="11" y="11" width="7" height="7" rx="1.5" fill="#2563eb" opacity="0.3"/>
-        </svg>
-        <span style={styles.logoText}>Valuation Copilot</span>
+        <img
+          src="/logo/logo-full.svg"
+          alt="Valuation Copilot BR"
+          style={styles.logoImg}
+        />
       </div>
 
       {/* Search — main action */}
@@ -63,15 +61,12 @@ const styles: Record<string, React.CSSProperties> = {
   logo: {
     display: "flex",
     alignItems: "center",
-    gap: 8,
     flexShrink: 0,
   },
-  logoText: {
-    color: "#f1f5f9",
-    fontWeight: 600,
-    fontSize: 14,
-    letterSpacing: "-0.3px",
-    whiteSpace: "nowrap",
+  logoImg: {
+    height: 28,
+    width: "auto",
+    display: "block",
   },
   searchWrap: {
     display: "flex",
