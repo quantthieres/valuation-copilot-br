@@ -11,11 +11,8 @@ import AssumptionsPanel from "@/components/dashboard/AssumptionsPanel";
 import MultiplesTable from "@/components/dashboard/MultiplesTable";
 import NewsPanel from "@/components/dashboard/NewsPanel";
 import RecalcToast from "@/components/dashboard/RecalcToast";
-import {
-  COMPANY, METRICS, FINANCIALS,
-  WACC_VALS, TG_VALS,
-  DEFAULT_ASSUMPTIONS, MULTIPLES, NEWS,
-} from "@/data/wege3";
+import { getCompanyData, DEFAULT_DATA } from "@/data/companies";
+import { B3_UNIVERSE } from "@/data/b3-universe";
 import {
   recalculateDcf, sensitivityFairValue,
   type Assumptions, type DcfResult,
@@ -45,116 +42,199 @@ function TabBar({ activeTab, onTabChange }: { activeTab: string; onTabChange: (t
   );
 }
 
-export default function Home() {
-  const [activeTab, setActiveTab]     = useState("Visão Geral");
-  const [assumptions, setAssumptions] = useState<Assumptions>({ ...DEFAULT_ASSUMPTIONS });
-  const [toastVisible, setToastVisible] = useState(false);
-  const [dcf, setDcf] = useState<DcfResult>(() => recalculateDcf({ ...DEFAULT_ASSUMPTIONS }));
+function EmptyStateView({ ticker, companyName }: { ticker: string; companyName: string }) {
+  return (
+    <div style={{
+      display: "flex", flexDirection: "column", alignItems: "center",
+      justifyContent: "center", padding: "72px 24px", textAlign: "center",
+    }}>
+      <div style={{
+        width: 56, height: 56, borderRadius: 14, background: "#f1f5f9",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontSize: 24, marginBottom: 20,
+      }}>
+        📊
+      </div>
+      <div style={{
+        background: "#fff", border: "1px solid #e2e8f0", borderRadius: 14,
+        padding: "36px 48px", maxWidth: 520,
+        boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+      }}>
+        <div style={{
+          display: "inline-block", background: "#f1f5f9", color: "#475569",
+          fontSize: 12, fontWeight: 700, padding: "3px 10px", borderRadius: 6,
+          fontFamily: "'JetBrains Mono', monospace", marginBottom: 16,
+          letterSpacing: "0.5px",
+        }}>
+          {ticker}
+        </div>
+        <h2 style={{ margin: "0 0 10px", fontSize: 18, fontWeight: 700, color: "#0f172a" }}>
+          {companyName}
+        </h2>
+        <p style={{ margin: "0 0 8px", fontSize: 14, color: "#374151", lineHeight: 1.6 }}>
+          Dados completos ainda não disponíveis para este ativo no MVP.
+        </p>
+        <p style={{ margin: 0, fontSize: 13, color: "#64748b", lineHeight: 1.6 }}>
+          Este ticker já está no universo de busca. A integração de dados financeiros será
+          adicionada nas próximas etapas.
+        </p>
+      </div>
+    </div>
+  );
+}
 
-  // Sensitivity matrix recomputed whenever assumptions change
-  const sensitivityMatrix = useMemo(() =>
-    WACC_VALS.map(w =>
-      TG_VALS.map(tg => {
-        const fv = sensitivityFairValue(assumptions, w, tg);
-        return Math.round(fv);
-      })
-    ),
-    [assumptions]
+export default function Home() {
+  const [activeTab, setActiveTab]       = useState("Visão Geral");
+  const [selectedTicker, setSelected]   = useState("WEGE3");
+  const [assumptions, setAssumptions]   = useState<Assumptions>(() => ({ ...DEFAULT_DATA.defaultAssumptions }));
+  const [toastVisible, setToastVisible] = useState(false);
+  const [dcf, setDcf]                   = useState<DcfResult>(() =>
+    recalculateDcf(DEFAULT_DATA.defaultAssumptions, DEFAULT_DATA.fundamentals, DEFAULT_DATA.company.price)
   );
 
-  const handleAssumptionChange = (key: keyof Assumptions, val: number) => {
-    setAssumptions(prev => ({ ...prev, [key]: val }));
-  };
+  const companyData = useMemo(() => getCompanyData(selectedTicker), [selectedTicker]);
 
-  const handleRecalculate = () => {
-    setDcf(recalculateDcf(assumptions));
+  const sensitivityMatrix = useMemo(() => {
+    if (!companyData) return [];
+    return companyData.waccVals.map(w =>
+      companyData.terminalGrowthVals.map(tg => {
+        const fv = sensitivityFairValue(assumptions, w, tg, companyData.fundamentals);
+        return Math.round(fv);
+      })
+    );
+  }, [assumptions, companyData]);
+
+  function handleAssumptionChange(key: keyof Assumptions, val: number) {
+    setAssumptions(prev => ({ ...prev, [key]: val }));
+  }
+
+  function handleRecalculate() {
+    if (!companyData) return;
+    setDcf(recalculateDcf(assumptions, companyData.fundamentals, companyData.company.price));
     setToastVisible(true);
     setTimeout(() => setToastVisible(false), 2500);
-  };
+  }
 
-  const sensitivityProps = {
-    waccVals: WACC_VALS,
-    tgVals: TG_VALS,
-    matrix: sensitivityMatrix,
-    currentPrice: COMPANY.price,
-    currentWacc: assumptions.wacc,
-    currentTg: assumptions.terminalGrowth,
-  };
+  function handleSelectCompany(ticker: string) {
+    const data = getCompanyData(ticker);
+    setSelected(ticker);
+    if (data) {
+      const newAssumptions = { ...data.defaultAssumptions };
+      setAssumptions(newAssumptions);
+      setDcf(recalculateDcf(newAssumptions, data.fundamentals, data.company.price));
+    }
+  }
+
+  const b3Entry = useMemo(
+    () => B3_UNIVERSE.find(c => c.ticker === selectedTicker),
+    [selectedTicker]
+  );
+
+  const sensitivityProps = companyData ? {
+    waccVals:     companyData.waccVals,
+    tgVals:       companyData.terminalGrowthVals,
+    matrix:       sensitivityMatrix,
+    currentPrice: companyData.company.price,
+    currentWacc:  assumptions.wacc,
+    currentTg:    assumptions.terminalGrowth,
+  } : null;
 
   return (
     <div style={{ minHeight: "100vh", background: "#f0f2f5" }}>
-      <NavBar />
-      <CompanyHeader company={COMPANY} />
-      <MetricsRow metrics={METRICS} />
+      <NavBar onSelectCompany={handleSelectCompany} selectedTicker={selectedTicker} />
 
-      <div style={{
-        padding: "5px 24px",
-        background: "#fff",
-        borderBottom: "1px solid #f1f5f9",
-        fontSize: 11,
-        color: "#94a3b8",
-        textAlign: "center" as const,
-      }}>
-        Dados ilustrativos para demonstração. Não constitui recomendação de investimento.
-      </div>
+      {companyData ? (
+        <>
+          <CompanyHeader company={companyData.company} />
+          <MetricsRow metrics={companyData.metrics} />
 
-      <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
-
-      <div style={{ padding: "18px 24px" }}>
-        {activeTab === "Visão Geral" && (
-          <div
-            className="main-grid"
-            style={{ display: "grid", gridTemplateColumns: "1fr 380px", gap: 14, alignItems: "start" }}
-          >
-            <div>
-              <HistoricalChart data={FINANCIALS} />
-              <DcfSummary dcf={dcf} />
-              <SensitivityTable {...sensitivityProps} />
-            </div>
-            <div>
-              <AssumptionsPanel assumptions={assumptions} onChange={handleAssumptionChange} onRecalculate={handleRecalculate} />
-              <MultiplesTable data={MULTIPLES} />
-              <NewsPanel news={NEWS} />
-            </div>
+          <div style={{
+            padding: "5px 24px",
+            background: "#fff",
+            borderBottom: "1px solid #f1f5f9",
+            fontSize: 11,
+            color: "#94a3b8",
+            textAlign: "center" as const,
+          }}>
+            Dados ilustrativos para demonstração. Não constitui recomendação de investimento.
           </div>
-        )}
 
-        {activeTab === "Financeiros" && (
-          <div style={{ maxWidth: 900 }}>
-            <HistoricalChart data={FINANCIALS} />
-            <div style={{
-              marginTop: 14, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10,
-              padding: "20px 24px", fontSize: 13, color: "#64748b", textAlign: "center",
-            }}>
-              Demonstrativos financeiros completos (DRE, Balanço Patrimonial, DFC) em breve.
-            </div>
-          </div>
-        )}
+          <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
 
-        {activeTab === "Valuation" && (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 380px", gap: 14 }}>
-            <div>
-              <DcfSummary dcf={dcf} />
-              <SensitivityTable {...sensitivityProps} />
-            </div>
-            <div>
-              <AssumptionsPanel assumptions={assumptions} onChange={handleAssumptionChange} onRecalculate={handleRecalculate} />
-            </div>
-          </div>
-        )}
+          <div style={{ padding: "18px 24px" }}>
+            {activeTab === "Visão Geral" && (
+              <div
+                className="main-grid"
+                style={{ display: "grid", gridTemplateColumns: "1fr 380px", gap: 14, alignItems: "start" }}
+              >
+                <div>
+                  <HistoricalChart data={companyData.financials} />
+                  <DcfSummary dcf={dcf} />
+                  {sensitivityProps && <SensitivityTable {...sensitivityProps} />}
+                </div>
+                <div>
+                  <AssumptionsPanel
+                    assumptions={assumptions}
+                    onChange={handleAssumptionChange}
+                    onRecalculate={handleRecalculate}
+                  />
+                  <MultiplesTable data={companyData.multiples} />
+                  <NewsPanel news={companyData.news} />
+                </div>
+              </div>
+            )}
 
-        {activeTab === "Notícias" && (
-          <div style={{ maxWidth: 700 }}>
-            <NewsPanel news={NEWS} />
-          </div>
-        )}
+            {activeTab === "Financeiros" && (
+              <div style={{ maxWidth: 900 }}>
+                <HistoricalChart data={companyData.financials} />
+                <div style={{
+                  marginTop: 14, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10,
+                  padding: "20px 24px", fontSize: 13, color: "#64748b", textAlign: "center",
+                }}>
+                  Demonstrativos financeiros completos (DRE, Balanço Patrimonial, DFC) em breve.
+                </div>
+              </div>
+            )}
 
-        {activeTab === "Premissas" && (
-          <div style={{ maxWidth: 500 }}>
-            <AssumptionsPanel assumptions={assumptions} onChange={handleAssumptionChange} onRecalculate={handleRecalculate} />
+            {activeTab === "Valuation" && sensitivityProps && (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 380px", gap: 14 }}>
+                <div>
+                  <DcfSummary dcf={dcf} />
+                  <SensitivityTable {...sensitivityProps} />
+                </div>
+                <div>
+                  <AssumptionsPanel
+                    assumptions={assumptions}
+                    onChange={handleAssumptionChange}
+                    onRecalculate={handleRecalculate}
+                  />
+                </div>
+              </div>
+            )}
+
+            {activeTab === "Notícias" && (
+              <div style={{ maxWidth: 700 }}>
+                <NewsPanel news={companyData.news} />
+              </div>
+            )}
+
+            {activeTab === "Premissas" && (
+              <div style={{ maxWidth: 500 }}>
+                <AssumptionsPanel
+                  assumptions={assumptions}
+                  onChange={handleAssumptionChange}
+                  onRecalculate={handleRecalculate}
+                />
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </>
+      ) : (
+        <EmptyStateView
+          ticker={selectedTicker}
+          companyName={b3Entry?.companyName ?? selectedTicker}
+        />
+      )}
 
       <RecalcToast visible={toastVisible} />
     </div>

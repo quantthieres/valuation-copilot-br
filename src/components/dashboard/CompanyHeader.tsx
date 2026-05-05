@@ -20,7 +20,7 @@ export default function CompanyHeader({ company }: { company: Company }) {
     <div style={styles.wrap}>
       <div style={styles.left}>
         <div style={styles.logoBox}>
-          <div style={styles.wegLogo}>WEG</div>
+          <div style={styles.wegLogo}>{company.ticker.slice(0, 3)}</div>
         </div>
         <div>
           <div style={styles.nameRow}>

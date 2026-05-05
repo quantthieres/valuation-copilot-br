@@ -1,14 +1,6 @@
-import { COMPANY_FUNDAMENTALS, COMPANY } from "@/data/wege3";
+import type { CompanyFundamentals, Assumptions } from "@/data/companies/types";
 
-export interface Assumptions {
-  revenueCAGR:    number; // %, e.g. 10.0
-  ebitMargin:     number; // %, e.g. 19.5
-  taxRate:        number; // %, e.g. 25.0
-  wacc:           number; // %, e.g. 12.0
-  terminalGrowth: number; // %, e.g. 4.0
-  capexRevenue:   number; // %, e.g. 3.8
-  nwcChange:      number; // %, e.g. 1.2
-}
+export type { Assumptions } from "@/data/companies/types";
 
 export interface ProjectedYear {
   year:      number;
@@ -41,7 +33,7 @@ export interface DcfResult {
 
 function fairValuePerShare(
   assumptions: Assumptions,
-  fundamentals: typeof COMPANY_FUNDAMENTALS,
+  fundamentals: CompanyFundamentals,
 ): number | null {
   const g      = assumptions.revenueCAGR    / 100;
   const ebitM  = assumptions.ebitMargin     / 100;
@@ -66,14 +58,14 @@ function fairValuePerShare(
     const deltaNwc = (revenue - prevRevenue) * nwcPct;
     const fcf      = nopat + da - capexAmt - deltaNwc;
 
-    sumPvFcf  += fcf / Math.pow(1 + wacc, i);
-    lastFcf    = fcf;
+    sumPvFcf   += fcf / Math.pow(1 + wacc, i);
+    lastFcf     = fcf;
     prevRevenue = revenue;
   }
 
-  const tv    = lastFcf * (1 + tg) / (wacc - tg);
-  const pvTv  = tv / Math.pow(1 + wacc, fundamentals.projectionYears);
-  const ev    = sumPvFcf + pvTv;
+  const tv   = lastFcf * (1 + tg) / (wacc - tg);
+  const pvTv = tv / Math.pow(1 + wacc, fundamentals.projectionYears);
+  const ev   = sumPvFcf + pvTv;
   const equity = ev - fundamentals.netDebt;
 
   return equity / fundamentals.sharesOutstanding;
@@ -81,10 +73,11 @@ function fairValuePerShare(
 
 // ─── Full result (with projected schedule + scenarios) ───────────────────────
 
-export function recalculateDcf(assumptions: Assumptions): DcfResult {
-  const f = COMPANY_FUNDAMENTALS;
-  const currentPrice = COMPANY.price;
-
+export function recalculateDcf(
+  assumptions: Assumptions,
+  fundamentals: CompanyFundamentals,
+  currentPrice: number,
+): DcfResult {
   const g      = assumptions.revenueCAGR    / 100;
   const ebitM  = assumptions.ebitMargin     / 100;
   const t      = assumptions.taxRate        / 100;
@@ -92,7 +85,7 @@ export function recalculateDcf(assumptions: Assumptions): DcfResult {
   const tg     = assumptions.terminalGrowth / 100;
   const capex  = assumptions.capexRevenue   / 100;
   const nwcPct = assumptions.nwcChange      / 100;
-  const daPct  = f.daPercentRevenue         / 100;
+  const daPct  = fundamentals.daPercentRevenue / 100;
 
   if (wacc <= tg) {
     return {
@@ -106,10 +99,10 @@ export function recalculateDcf(assumptions: Assumptions): DcfResult {
   }
 
   const years: ProjectedYear[] = [];
-  let prevRevenue = f.currentRevenue;
+  let prevRevenue = fundamentals.currentRevenue;
   let sumPvFcf    = 0;
 
-  for (let i = 1; i <= f.projectionYears; i++) {
+  for (let i = 1; i <= fundamentals.projectionYears; i++) {
     const revenue  = prevRevenue * (1 + g);
     const ebit     = revenue * ebitM;
     const nopat    = ebit * (1 - t);
@@ -124,24 +117,23 @@ export function recalculateDcf(assumptions: Assumptions): DcfResult {
     prevRevenue = revenue;
   }
 
-  const lastFcf      = years[years.length - 1].fcf;
-  const terminalValue    = lastFcf * (1 + tg) / (wacc - tg);
-  const pvTerminalValue  = terminalValue / Math.pow(1 + wacc, f.projectionYears);
+  const lastFcf         = years[years.length - 1].fcf;
+  const terminalValue   = lastFcf * (1 + tg) / (wacc - tg);
+  const pvTerminalValue = terminalValue / Math.pow(1 + wacc, fundamentals.projectionYears);
 
-  const ev         = sumPvFcf + pvTerminalValue;
-  const equityVal  = ev - f.netDebt;
-  const fairValue  = equityVal / f.sharesOutstanding;
-  const upside     = ((fairValue / currentPrice) - 1) * 100;
+  const ev        = sumPvFcf + pvTerminalValue;
+  const equityVal = ev - fundamentals.netDebt;
+  const fairValue = equityVal / fundamentals.sharesOutstanding;
+  const upside    = ((fairValue / currentPrice) - 1) * 100;
 
-  // Scenario runs for bear/bull range markers
   const bearFv = fairValuePerShare(
     { ...assumptions, wacc: assumptions.wacc + 2, revenueCAGR: assumptions.revenueCAGR - 3, ebitMargin: assumptions.ebitMargin - 2 },
-    f,
+    fundamentals,
   ) ?? fairValue * 0.72;
 
   const bullFv = fairValuePerShare(
     { ...assumptions, wacc: assumptions.wacc - 2, revenueCAGR: assumptions.revenueCAGR + 3, ebitMargin: assumptions.ebitMargin + 2 },
-    f,
+    fundamentals,
   ) ?? fairValue * 1.32;
 
   const fmt = (v: number) => `R$ ${v.toFixed(1).replace(".", ",")}B`;
@@ -168,10 +160,11 @@ export function sensitivityFairValue(
   assumptions: Assumptions,
   overrideWacc: number,
   overrideTg: number,
+  fundamentals: CompanyFundamentals,
 ): number {
   const fv = fairValuePerShare(
     { ...assumptions, wacc: overrideWacc, terminalGrowth: overrideTg },
-    COMPANY_FUNDAMENTALS,
+    fundamentals,
   );
   return fv !== null ? parseFloat(fv.toFixed(2)) : 0;
 }
