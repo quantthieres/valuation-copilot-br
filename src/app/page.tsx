@@ -11,6 +11,7 @@ import AssumptionsPanel from "@/components/dashboard/AssumptionsPanel";
 import MultiplesTable from "@/components/dashboard/MultiplesTable";
 import NewsPanel from "@/components/dashboard/NewsPanel";
 import RecalcToast from "@/components/dashboard/RecalcToast";
+import DcfProjectionTable from "@/components/dashboard/DcfProjectionTable";
 import { getCompanyData, DEFAULT_DATA } from "@/data/companies";
 import { B3_UNIVERSE } from "@/data/b3-universe";
 import {
@@ -201,6 +202,11 @@ export default function Home() {
                 <div>
                   <DcfSummary dcf={dcf} />
                   <SensitivityTable {...sensitivityProps} />
+                  <DcfProjectionTable
+                    projectedCashFlows={dcf.projectedCashFlows}
+                    terminalValue={dcf.terminalValue}
+                    pvTerminalValue={dcf.pvTerminalValue}
+                  />
                 </div>
                 <div>
                   <AssumptionsPanel
