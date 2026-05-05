@@ -54,13 +54,16 @@ export default function NavBar({ onSelectCompany, selectedTicker = "" }: NavBarP
 
   return (
     <header style={styles.header}>
-      {/* Logo — links to home */}
-      <Link href="/" style={styles.logo}>
+      {/* Brand — links to home */}
+      <Link href="/" style={styles.brand}>
         <img
-          src="/logo/logo-full.svg"
-          alt="Valuation Copilot BR"
-          style={styles.logoImg}
+          src="/logo/logo-icon.svg"
+          alt=""
+          aria-hidden="true"
+          style={styles.brandIcon}
         />
+        <span style={styles.brandText}>Valuation Copilot</span>
+        <span style={styles.brandBadge}>BR</span>
       </Link>
 
       {/* Search — only rendered when the page provides an onSelectCompany handler */}
@@ -149,7 +152,7 @@ const styles: Record<string, React.CSSProperties> = {
   header: {
     display: "flex",
     alignItems: "center",
-    height: 52,
+    height: 58,
     background: "#0f172a",
     padding: "0 24px",
     borderBottom: "1px solid #1e293b",
@@ -158,15 +161,41 @@ const styles: Record<string, React.CSSProperties> = {
     zIndex: 100,
     gap: 20,
   },
-  logo: {
+  brand: {
     display: "flex",
     alignItems: "center",
+    gap: 10,
+    flexShrink: 0,
+    textDecoration: "none",
+  },
+  brandIcon: {
+    width: 40,
+    height: 40,
+    display: "block",
     flexShrink: 0,
   },
-  logoImg: {
-    height: 28,
-    width: "auto",
-    display: "block",
+  brandText: {
+    fontSize: 20,
+    fontWeight: 800,
+    color: "#f8fafc",
+    letterSpacing: "-0.4px",
+    whiteSpace: "nowrap",
+    fontFamily: "inherit",
+  },
+  brandBadge: {
+    fontSize: 9,
+    fontWeight: 700,
+    letterSpacing: "0.9px",
+    textTransform: "uppercase" as const,
+    color: "#64748b",
+    background: "#1e293b",
+    border: "1px solid #334155",
+    borderRadius: 4,
+    padding: "2px 6px",
+    alignSelf: "center",
+    marginTop: 1,
+    whiteSpace: "nowrap",
+    fontFamily: "inherit",
   },
   searchWrap: {
     display: "flex",
