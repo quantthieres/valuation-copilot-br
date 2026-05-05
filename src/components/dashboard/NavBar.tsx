@@ -1,19 +1,26 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useMemo } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { B3_UNIVERSE, type B3Company } from "@/data/b3-universe";
 
-const NAV_LINKS = ["Painel", "Metodologia", "Sobre"];
+const NAV_LINKS = [
+  { label: "Painel",      href: "/"           },
+  { label: "Metodologia", href: "/metodologia" },
+  { label: "Sobre",       href: "#"            },
+];
 
 interface NavBarProps {
-  onSelectCompany: (ticker: string) => void;
-  selectedTicker: string;
+  onSelectCompany?: (ticker: string) => void;
+  selectedTicker?: string;
 }
 
-export default function NavBar({ onSelectCompany, selectedTicker }: NavBarProps) {
-  const [query, setQuery]   = useState("");
-  const [open, setOpen]     = useState(false);
-  const wrapRef             = useRef<HTMLDivElement>(null);
+export default function NavBar({ onSelectCompany, selectedTicker = "" }: NavBarProps) {
+  const pathname = usePathname();
+  const [query, setQuery] = useState("");
+  const [open, setOpen]   = useState(false);
+  const wrapRef           = useRef<HTMLDivElement>(null);
 
   const suggestions = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -28,6 +35,7 @@ export default function NavBar({ onSelectCompany, selectedTicker }: NavBarProps)
   }, [query]);
 
   useEffect(() => {
+    if (!onSelectCompany) return;
     function handleOutsideClick(e: MouseEvent) {
       if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
         setOpen(false);
@@ -35,9 +43,10 @@ export default function NavBar({ onSelectCompany, selectedTicker }: NavBarProps)
     }
     document.addEventListener("mousedown", handleOutsideClick);
     return () => document.removeEventListener("mousedown", handleOutsideClick);
-  }, []);
+  }, [onSelectCompany]);
 
   function handleSelect(company: B3Company) {
+    if (!onSelectCompany) return;
     onSelectCompany(company.ticker);
     setQuery(company.ticker);
     setOpen(false);
@@ -45,83 +54,92 @@ export default function NavBar({ onSelectCompany, selectedTicker }: NavBarProps)
 
   return (
     <header style={styles.header}>
-      {/* Logo */}
-      <div style={styles.logo}>
+      {/* Logo — links to home */}
+      <Link href="/" style={styles.logo}>
         <img
           src="/logo/logo-full.svg"
           alt="Valuation Copilot BR"
           style={styles.logoImg}
         />
-      </div>
+      </Link>
 
-      {/* Search */}
-      <div ref={wrapRef} style={styles.searchWrap}>
-        <svg style={styles.searchIcon} width="15" height="15" viewBox="0 0 16 16" fill="none">
-          <circle cx="6.5" cy="6.5" r="5" stroke="#64748b" strokeWidth="1.5"/>
-          <path d="M10.5 10.5L14 14" stroke="#64748b" strokeWidth="1.5" strokeLinecap="round"/>
-        </svg>
-        <input
-          style={styles.search}
-          value={query}
-          placeholder="Buscar ticker ou empresa... Ex: WEGE3, PETR4, VALE3"
-          onChange={e => { setQuery(e.target.value); setOpen(true); }}
-          onFocus={() => { if (query) setOpen(true); }}
-        />
-        {query ? (
-          <button
-            onClick={() => { setQuery(""); setOpen(false); }}
-            style={styles.clearBtn}
-            aria-label="Limpar busca"
-          >
-            ×
-          </button>
-        ) : (
-          <kbd style={styles.kbdHint}>⌘K</kbd>
-        )}
+      {/* Search — only rendered when the page provides an onSelectCompany handler */}
+      {onSelectCompany ? (
+        <div ref={wrapRef} style={styles.searchWrap}>
+          <svg style={styles.searchIcon} width="15" height="15" viewBox="0 0 16 16" fill="none">
+            <circle cx="6.5" cy="6.5" r="5" stroke="#64748b" strokeWidth="1.5"/>
+            <path d="M10.5 10.5L14 14" stroke="#64748b" strokeWidth="1.5" strokeLinecap="round"/>
+          </svg>
+          <input
+            style={styles.search}
+            value={query}
+            placeholder="Buscar ticker ou empresa... Ex: WEGE3, PETR4, VALE3"
+            onChange={e => { setQuery(e.target.value); setOpen(true); }}
+            onFocus={() => { if (query) setOpen(true); }}
+          />
+          {query ? (
+            <button
+              onClick={() => { setQuery(""); setOpen(false); }}
+              style={styles.clearBtn}
+              aria-label="Limpar busca"
+            >
+              ×
+            </button>
+          ) : (
+            <kbd style={styles.kbdHint}>⌘K</kbd>
+          )}
 
-        {/* Dropdown */}
-        {open && suggestions.length > 0 && (
-          <div style={styles.dropdown}>
-            {suggestions.map(c => (
-              <button
-                key={c.ticker}
-                onClick={() => handleSelect(c)}
-                style={{
-                  ...styles.dropdownItem,
-                  background: c.ticker === selectedTicker ? "#f0f9ff" : "transparent",
-                }}
-              >
-                <div style={styles.dropdownLeft}>
-                  <span style={styles.dropdownTicker}>{c.ticker}</span>
-                  <span style={styles.dropdownName}>{c.tradingName}</span>
-                </div>
-                <div style={styles.dropdownRight}>
-                  <span style={styles.dropdownSector}>{c.sector}</span>
-                  <span style={{
-                    ...styles.dropdownBadge,
-                    background: c.hasMockData ? "#dcfce7" : "#f1f5f9",
-                    color:      c.hasMockData ? "#15803d" : "#64748b",
-                  }}>
-                    {c.hasMockData ? "Disponível" : "Em breve"}
-                  </span>
-                </div>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+          {open && suggestions.length > 0 && (
+            <div style={styles.dropdown}>
+              {suggestions.map(c => (
+                <button
+                  key={c.ticker}
+                  onClick={() => handleSelect(c)}
+                  style={{
+                    ...styles.dropdownItem,
+                    background: c.ticker === selectedTicker ? "#f0f9ff" : "transparent",
+                  }}
+                >
+                  <div style={styles.dropdownLeft}>
+                    <span style={styles.dropdownTicker}>{c.ticker}</span>
+                    <span style={styles.dropdownName}>{c.tradingName}</span>
+                  </div>
+                  <div style={styles.dropdownRight}>
+                    <span style={styles.dropdownSector}>{c.sector}</span>
+                    <span style={{
+                      ...styles.dropdownBadge,
+                      background: c.hasMockData ? "#dcfce7" : "#f1f5f9",
+                      color:      c.hasMockData ? "#15803d" : "#64748b",
+                    }}>
+                      {c.hasMockData ? "Disponível" : "Em breve"}
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div style={{ flex: 1 }} />
+      )}
 
-      {/* Static nav links */}
+      {/* Nav links */}
       <nav style={styles.navLinks}>
-        {NAV_LINKS.map((item, i) => (
-          <a
-            key={item}
-            href="#"
-            style={{ ...styles.navLink, ...(i === 0 ? styles.navLinkActive : {}) }}
-          >
-            {item}
-          </a>
-        ))}
+        {NAV_LINKS.map(({ label, href }) => {
+          const isActive =
+            href === "/"
+              ? pathname === "/"
+              : href !== "#" && pathname.startsWith(href);
+          return (
+            <Link
+              key={label}
+              href={href}
+              style={{ ...styles.navLink, ...(isActive ? styles.navLinkActive : {}) }}
+            >
+              {label}
+            </Link>
+          );
+        })}
       </nav>
     </header>
   );
