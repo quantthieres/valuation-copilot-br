@@ -276,6 +276,153 @@ Em andamento / próximos passos:
 
 ---
 
+## CVM data layer
+
+The `src/lib/cvm/` module provides the foundation for ingesting official financial statements from [CVM Dados Abertos](https://dados.cvm.gov.br).
+
+### Architecture
+
+| File | Purpose |
+|---|---|
+| `src/lib/cvm/types.ts` | Core types: `CvmCompany`, `CvmRegistryCompany`, `RawCvmStatementRow`, `NormalizedFinancials` |
+| `src/lib/cvm/company-map.ts` | Verified ticker → CVM registration data (cvmCode + cnpj) for 12 companies |
+| `src/lib/cvm/cvm-registry.ts` | Runtime registry fetch, in-memory cache (24 h TTL), name-based matcher |
+| `src/lib/cvm/cvm-client.ts` | Public API: `getCvmCompany()`, `getAnnualFinancialsFromCvm()` |
+| `src/lib/cvm/normalizer.ts` | Converts raw CVM CSV rows into `NormalizedFinancials` |
+
+### Ticker mapping
+
+The app includes an initial ticker-to-CVM mapping layer based on CVM's official company registry (`cad_cia_aberta.csv`). All 12 companies have been verified and populated with real `cvmCode` and `cnpj` values (`hasCvmMapping: true`):
+
+| Ticker | CVM Code | Company (CVM registry) |
+|--------|----------|------------------------|
+| WEGE3 | 5410 | WEG SA |
+| EGIE3 | 17329 | Engie Brasil Energia S.A. |
+| CPFE3 | 18660 | CPFL Energia SA |
+| ABEV3 | 23264 | Ambev S.A. |
+| VIVT3 | 17671 | Telefônica Brasil S.A. |
+| PETR3 / PETR4 | 9512 | Petróleo Brasileiro S.A. — Petrobras |
+| VALE3 | 4170 | Vale S.A. |
+| SUZB3 | 13986 | Suzano S.A. |
+| PRIO3 | 22187 | PRIO S.A. (ex-Petro Rio) |
+| ELET3 | 2437 | Axia Energia S.A. (ex-Eletrobras) |
+| EQTL3 | 20010 | Equatorial S.A. |
+
+> **ELET3 note:** After privatization in 2022, Centrais Elétricas Brasileiras S.A. (Eletrobras) adopted the legal name "Axia Energia S.A." in the CVM registry. The CNPJ `00.001.180/0001-26` and CVM code `2437` are verified. The B3 ticker and trading name remain ELET3 / ELETROBRAS.
+
+### Runtime registry matching
+
+`src/lib/cvm/cvm-registry.ts` fetches the live CVM registry at request time and attempts to match tickers by normalized company name (accent removal, suffix stripping, uppercase). Results are cached in memory for 24 hours. If the registry is unreachable, the static map is used as fallback.
+
+### API route
+
+```
+GET /api/cvm/company/:ticker
+```
+
+Returns the CVM company entry plus match metadata:
+
+```json
+{
+  "company": {
+    "ticker": "WEGE3",
+    "companyName": "WEG SA",
+    "cvmCode": "5410",
+    "cnpj": "84.429.695/0001-11",
+    "hasCvmMapping": true
+  },
+  "source": "cvm_registry",
+  "matchMethod": "exact_name"
+}
+```
+
+If the live registry match fails but the static map has a verified entry:
+
+```json
+{
+  "source": "static_map",
+  "matchMethod": "manual_verification"
+}
+```
+
+### Next step: financial statement parsing
+
+See the **CVM DFP financials** section below.
+
+---
+
+## CVM DFP financials
+
+The app can now fetch and parse real annual financial statements from CVM Dados Abertos. Values are normalized to **BRL billions** and returned per fiscal year.
+
+### Architecture
+
+| File | Purpose |
+|---|---|
+| `src/lib/cvm/dfp-parser.ts` | Parses a DFP CSV string into `RawCvmStatementRow[]`; handles Latin-1, header-index columns, MIL scale, VERSAO deduplication |
+| `src/lib/cvm/dfp-client.ts` | Downloads yearly zip files, extracts target CSVs with `fflate`, assembles and normalizes rows per year |
+| `src/lib/cvm/normalizer.ts` | Maps CVM account codes to `NormalizedFinancials` fields; identifies capex by DFC sub-row names |
+
+### API endpoint
+
+```
+GET /api/cvm/financials/:ticker
+```
+
+Example: `/api/cvm/financials/WEGE3`
+
+```json
+{
+  "ticker": "WEGE3",
+  "source": "cvm_dfp",
+  "company": { "ticker": "WEGE3", "companyName": "WEG S.A.", "cvmCode": "5410", "cnpj": "84.429.695/0001-11" },
+  "financials": [
+    { "fiscalYear": 2020, "revenue": 17.47, "ebit": 2.82, "netIncome": 2.40, "operatingCashFlow": 3.93, "capex": 0.56, "freeCashFlow": 3.37, "cash": 3.89, "totalDebt": 1.69, "netDebt": -2.21 },
+    ...
+    { "fiscalYear": 2024, "revenue": 37.99, "ebit": 7.69, "netIncome": 6.32, "operatingCashFlow": 7.25, "capex": 1.85, "freeCashFlow": 5.40, "cash": 7.35, "totalDebt": 3.60, "netDebt": -3.75 }
+  ]
+}
+```
+
+### Years supported
+
+Fiscal years **2020 – 2024** (5 annual DFP zips). Configurable via `DFP_YEARS` in `dfp-client.ts`.
+
+### Statement files parsed
+
+Per year (from `dfp_cia_aberta_YYYY.zip`):
+
+| File | Fields extracted |
+|---|---|
+| `dfp_cia_aberta_DRE_con_YYYY.csv` | revenue (3.01), ebit (3.05), netIncome (3.11) |
+| `dfp_cia_aberta_DFC_MI_con_YYYY.csv` | operatingCashFlow (6.01), capex (6.02.xx by name) |
+| `dfp_cia_aberta_DFC_MD_con_YYYY.csv` | fallback if DFC_MI not available |
+| `dfp_cia_aberta_BPA_con_YYYY.csv` | cash (1.01.01) |
+| `dfp_cia_aberta_BPP_con_YYYY.csv` | totalDebt (2.01.04 + 2.02.01) |
+
+### Caching
+
+Two in-memory layers (no disk persistence — server restarts clear cache):
+
+| Level | Key | TTL | Purpose |
+|---|---|---|---|
+| Zip buffer | `year` | 1 h | Avoids re-downloading the same zip when multiple statement types are needed |
+| Filtered rows | `year:stmtType:cvmCode` | 24 h | Parsed+filtered data for a specific company |
+
+### This step replaces mock data?
+
+Not yet. The dashboard still uses mock data. The DFP endpoint is a standalone test route. Dashboard integration (replacing mock datasets with real CVM data) is the next step.
+
+### Known limitations
+
+- **Consolidated only**: only `_con` statement files are fetched (no standalone/individual).
+- **Cold start**: first request per year downloads a ~13 MB zip (1–3 s per year on typical connections). Subsequent requests are served from cache.
+- **Capex estimation**: identified by DFC sub-row names containing "imobilizado" / "intangível" / "ativo fixo". M&A rows ("empresa", "combinação") are excluded. May miss companies with non-standard naming.
+- **Debt scope**: only `2.01.04` (short-term) + `2.02.01` (long-term) loans. Debentures at non-standard accounts are not yet captured.
+- **No ITR**: quarterly data is future work.
+
+---
+
 ## Market data configuration
 
 The app can optionally fetch real-time quote data from [brapi.dev](https://brapi.dev) and display it in the company header. This is fully optional — without a token the app runs normally using mock price data.
