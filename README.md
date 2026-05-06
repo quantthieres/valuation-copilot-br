@@ -276,6 +276,59 @@ Em andamento / próximos passos:
 
 ---
 
+## Market data configuration
+
+The app can optionally fetch real-time quote data from [brapi.dev](https://brapi.dev) and display it in the company header. This is fully optional — without a token the app runs normally using mock price data.
+
+### Local development
+
+1. Copy the example env file:
+
+```bash
+cp .env.example .env.local
+```
+
+2. Add your token to `.env.local`:
+
+```env
+BRAPI_TOKEN=your_brapi_token_here
+```
+
+3. Restart the dev server. The company header will show live prices with "Fonte: brapi".
+
+**Never commit `.env.local`** — it is already listed in `.gitignore`.
+
+### Vercel deployment
+
+In your Vercel project, go to:
+
+**Project Settings → Environment Variables**
+
+Add a new variable:
+
+| Name | Value | Environment |
+|------|-------|-------------|
+| `BRAPI_TOKEN` | your token | Production, Preview, Development |
+
+The token is only used server-side and is never included in the client bundle.
+
+### Fallback behavior
+
+If `BRAPI_TOKEN` is not set or if brapi is unreachable:
+- The app falls back silently to mock price data.
+- The dashboard remains fully functional.
+- The company header shows "Fonte: dados ilustrativos".
+
+### Security
+
+- `BRAPI_TOKEN` is read exclusively in `src/lib/market-data/brapi.ts` (server module) and the API route `src/app/api/market-data/[ticker]/route.ts`.
+- The frontend only calls the internal route `/api/market-data/{ticker}` — the real token never reaches the browser.
+- **Never use `NEXT_PUBLIC_BRAPI_TOKEN`** — that would expose the token in the client bundle.
+- **Never commit `.env.local`** or any file containing a real token.
+- If a token is accidentally exposed, rotate it immediately at [brapi.dev](https://brapi.dev) and treat the old key as compromised.
+
+---
+
 ## Aviso ⚠️
 
 Este projeto é educacional e está em desenvolvimento.

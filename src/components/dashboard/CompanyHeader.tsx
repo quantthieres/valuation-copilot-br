@@ -1,4 +1,5 @@
 import React from "react";
+import type { MarketDataQuote } from "@/lib/market-data/types";
 
 interface Company {
   name: string;
@@ -14,8 +15,35 @@ interface Company {
   upside: number;
 }
 
-export default function CompanyHeader({ company }: { company: Company }) {
-  const isUp = company.priceChangePct >= 0;
+interface CompanyHeaderProps {
+  company: Company;
+  quote?: MarketDataQuote | null;
+  quoteLoading?: boolean;
+}
+
+function formatTime(iso: string): string {
+  try {
+    return new Date(iso).toLocaleTimeString("pt-BR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return "";
+  }
+}
+
+export default function CompanyHeader({ company, quote, quoteLoading }: CompanyHeaderProps) {
+  const displayPrice     = quote?.price         ?? company.price;
+  const displayChangePct = quote?.changePercent  ?? company.priceChangePct;
+  const isUp             = displayChangePct >= 0;
+  const isLive           = quote?.source === "brapi";
+
+  let sourceLabel = "Fonte: dados ilustrativos";
+  if (isLive) {
+    const time = quote?.updatedAt ? ` · Atualizado em ${formatTime(quote.updatedAt)}` : "";
+    sourceLabel = `Fonte: brapi${time}`;
+  }
+
   return (
     <div style={styles.wrap}>
       <div style={styles.left}>
@@ -44,11 +72,19 @@ export default function CompanyHeader({ company }: { company: Company }) {
       </div>
       <div style={styles.right}>
         <div style={styles.priceBlock}>
-          <div style={styles.priceLabel}>Preço Atual</div>
-          <div style={styles.price}>R$ {company.price.toFixed(2).replace(".", ",")}</div>
-          <div style={{ ...styles.priceChange, color: isUp ? "#16a34a" : "#dc2626" }}>
-            {isUp ? "▲" : "▼"} {Math.abs(company.priceChangePct).toFixed(2).replace(".", ",")}% hoje
+          <div style={styles.priceLabel}>
+            Preço Atual
+            {quoteLoading && (
+              <span style={styles.loadingDots}>···</span>
+            )}
           </div>
+          <div style={styles.price}>
+            R$ {displayPrice.toFixed(2).replace(".", ",")}
+          </div>
+          <div style={{ ...styles.priceChange, color: isUp ? "#16a34a" : "#dc2626" }}>
+            {isUp ? "▲" : "▼"} {Math.abs(displayChangePct).toFixed(2).replace(".", ",")}% hoje
+          </div>
+          <div style={styles.sourceLabel}>{sourceLabel}</div>
         </div>
         <div style={styles.actions}>
           <button style={styles.btnSecondary}>
@@ -108,12 +144,23 @@ const styles: Record<string, React.CSSProperties> = {
   metaDivider: { color: "#cbd5e1", fontSize: 11 },
   right: { display: "flex", alignItems: "center", gap: 20, flexShrink: 0 },
   priceBlock: { textAlign: "right" },
-  priceLabel: { fontSize: 10, color: "#94a3b8", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 2 },
+  priceLabel: {
+    fontSize: 10, color: "#94a3b8", fontWeight: 500,
+    textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 2,
+    display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 4,
+  },
+  loadingDots: {
+    fontSize: 9, color: "#94a3b8", letterSpacing: "2px",
+  },
   price: {
     fontSize: 26, fontWeight: 700, color: "#0f172a",
     fontFamily: "'JetBrains Mono', monospace", letterSpacing: "-1px",
   },
   priceChange: { fontSize: 12, fontWeight: 500, fontFamily: "'JetBrains Mono', monospace" },
+  sourceLabel: {
+    fontSize: 10, color: "#94a3b8", marginTop: 5,
+    letterSpacing: "0.1px",
+  },
   actions: { display: "flex", gap: 8 },
   btnSecondary: {
     display: "flex", alignItems: "center", fontSize: 12, fontWeight: 500,

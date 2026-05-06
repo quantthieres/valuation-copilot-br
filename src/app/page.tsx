@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import NavBar from "@/components/dashboard/NavBar";
 import CompanyHeader from "@/components/dashboard/CompanyHeader";
 import MetricsRow from "@/components/dashboard/MetricsRow";
@@ -14,6 +14,7 @@ import RecalcToast from "@/components/dashboard/RecalcToast";
 import DcfProjectionTable from "@/components/dashboard/DcfProjectionTable";
 import { getCompanyData, DEFAULT_DATA } from "@/data/companies";
 import { B3_UNIVERSE } from "@/data/b3-universe";
+import type { MarketDataQuote } from "@/lib/market-data/types";
 import {
   recalculateDcf, sensitivityFairValue,
   type Assumptions, type DcfResult,
@@ -92,8 +93,34 @@ export default function Home() {
   const [dcf, setDcf]                   = useState<DcfResult>(() =>
     recalculateDcf(DEFAULT_DATA.defaultAssumptions, DEFAULT_DATA.fundamentals, DEFAULT_DATA.company.price)
   );
+  const [marketQuote, setMarketQuote]   = useState<MarketDataQuote | null>(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
 
   const companyData = useMemo(() => getCompanyData(selectedTicker), [selectedTicker]);
+
+  // Fetch real market quote whenever the selected ticker changes.
+  // Falls back silently to mock data if the API is unavailable or returns null.
+  useEffect(() => {
+    if (!getCompanyData(selectedTicker)) {
+      setMarketQuote(null);
+      setQuoteLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setMarketQuote(null);
+    setQuoteLoading(true);
+
+    fetch(`/api/market-data/${encodeURIComponent(selectedTicker)}`)
+      .then(res => res.json())
+      .then((body: { quote: MarketDataQuote | null }) => {
+        if (!cancelled) setMarketQuote(body.quote ?? null);
+      })
+      .catch(() => { /* network error — keep mock data */ })
+      .finally(() => { if (!cancelled) setQuoteLoading(false); });
+
+    return () => { cancelled = true; };
+  }, [selectedTicker]);
 
   const sensitivityMatrix = useMemo(() => {
     if (!companyData) return [];
@@ -146,7 +173,11 @@ export default function Home() {
 
       {companyData ? (
         <>
-          <CompanyHeader company={companyData.company} />
+          <CompanyHeader
+            company={companyData.company}
+            quote={marketQuote}
+            quoteLoading={quoteLoading}
+          />
           <MetricsRow metrics={companyData.metrics} />
 
           <div style={{
