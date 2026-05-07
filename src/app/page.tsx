@@ -13,6 +13,7 @@ import NewsPanel from "@/components/dashboard/NewsPanel";
 import RecalcToast from "@/components/dashboard/RecalcToast";
 import DcfProjectionTable from "@/components/dashboard/DcfProjectionTable";
 import CvmFinancialsTable from "@/components/dashboard/CvmFinancialsTable";
+import DataSourceNotice from "@/components/dashboard/DataSourceNotice";
 import { cvmFinancialsToDashboardFinancials, buildCvmFundamentalsFromFinancials } from "@/lib/cvm/transformers";
 import type { NormalizedFinancials } from "@/lib/cvm/types";
 import { getCompanyData, DEFAULT_DATA } from "@/data/companies";
@@ -318,6 +319,13 @@ export default function Home() {
                     </span>
                   )}
                 </div>
+                {!cvmLoading && (
+                  <DataSourceNotice
+                    sourceMode={financialSource}
+                    hasCvmData={cvmFinancials !== null && cvmFinancials.length > 0}
+                    quoteSource={marketQuote?.source ?? null}
+                  />
+                )}
                 <HistoricalChart data={activeFinancials} />
                 <CvmFinancialsTable ticker={selectedTicker} enabled={true} />
                 <div style={{
@@ -332,6 +340,15 @@ export default function Home() {
             {activeTab === "Valuation" && sensitivityProps && (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 380px", gap: 14 }}>
                 <div>
+                  {financialSource === "cvm" && cvmFinancials && cvmFinancials.length > 0 && (
+                    <div style={{
+                      fontSize: 11, color: "#1d4ed8", background: "#eff6ff",
+                      border: "1px solid #bfdbfe", borderRadius: 6,
+                      padding: "5px 10px", marginBottom: 12,
+                    }}>
+                      Valuation usando fundamentos derivados da DFP/CVM.
+                    </div>
+                  )}
                   <DcfSummary dcf={dcf} />
                   <SensitivityTable {...sensitivityProps} />
                   <DcfProjectionTable
