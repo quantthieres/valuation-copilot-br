@@ -64,7 +64,7 @@ export default function NavBar({ onSelectCompany, selectedTicker = "" }: NavBarP
           aria-hidden="true"
           style={styles.brandIcon}
         />
-        <span style={styles.brandText}>Valuation Copilot</span>
+        <span style={styles.brandText}>Fundamental Copilot</span>
         <span style={styles.brandBadge}>BR</span>
       </Link>
 
