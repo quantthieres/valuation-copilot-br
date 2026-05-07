@@ -19,6 +19,7 @@ interface CompanyHeaderProps {
   company: Company;
   quote?: MarketDataQuote | null;
   quoteLoading?: boolean;
+  exportUrl?: string;
 }
 
 function formatTime(iso: string): string {
@@ -32,7 +33,7 @@ function formatTime(iso: string): string {
   }
 }
 
-export default function CompanyHeader({ company, quote, quoteLoading }: CompanyHeaderProps) {
+export default function CompanyHeader({ company, quote, quoteLoading, exportUrl }: CompanyHeaderProps) {
   const displayPrice     = quote?.price         ?? company.price;
   const displayChangePct = quote?.changePercent  ?? company.priceChangePct;
   const isUp             = displayChangePct >= 0;
@@ -94,12 +95,21 @@ export default function CompanyHeader({ company, quote, quoteLoading }: CompanyH
             </svg>
             Atualizar Dados
           </button>
-          <button style={styles.btnPrimary}>
-            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ marginRight: 5 }}>
-              <path d="M8 2v8M5 7l3 3 3-3M3 12h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            Exportar Relatório
-          </button>
+          {exportUrl ? (
+            <a href={exportUrl} style={{ ...styles.btnPrimary, textDecoration: "none" }}>
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ marginRight: 5 }}>
+                <path d="M8 2v8M5 7l3 3 3-3M3 12h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Exportar Relatório
+            </a>
+          ) : (
+            <button style={styles.btnPrimary}>
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ marginRight: 5 }}>
+                <path d="M8 2v8M5 7l3 3 3-3M3 12h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Exportar Relatório
+            </button>
+          )}
         </div>
       </div>
     </div>

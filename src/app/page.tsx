@@ -247,6 +247,7 @@ export default function Home() {
             company={companyData.company}
             quote={marketQuote}
             quoteLoading={quoteLoading}
+            exportUrl={`/relatorio/${selectedTicker}?source=${financialSource}`}
           />
           <MetricsRow metrics={activeMetrics} />
 
