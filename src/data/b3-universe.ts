@@ -42,9 +42,9 @@ export const B3_UNIVERSE: B3Asset[] = [
 
   // ── Bens de Capital ──────────────────────────────────────────────────────────
   stock("WEGE3",  "WEG S.A.",                                           "WEG",            "Bens de Capital",        "Motores e Geradores",            VA,  true,  true),
-  stock("EMBR3",  "Embraer S.A.",                                        "Embraer",        "Bens de Capital",        "Aeronáutico",                    QO),
-  stock("TUPY3",  "Tupy S.A.",                                           "Tupy",           "Bens de Capital",        "Autopeças",                      QO),
-  stock("FRAS3",  "Frasle Mobility S.A.",                                "Frasle",         "Bens de Capital",        "Autopeças",                      QO),
+  stock("EMBR3",  "Embraer S.A.",                                        "Embraer",        "Bens de Capital",        "Aeronáutico",                    CVM, false, true),
+  stock("TUPY3",  "Tupy S.A.",                                           "Tupy",           "Bens de Capital",        "Autopeças",                      CVM, false, true),
+  stock("FRAS3",  "Frasle Mobility S.A.",                                "Frasle",         "Bens de Capital",        "Autopeças",                      CVM, false, true),
   stock("MYPK3",  "Iochpe-Maxion S.A.",                                  "Iochpe-Maxion",  "Bens de Capital",        "Autopeças",                      QO),
   stock("ROMI3",  "Indústrias Romi S.A.",                                "Romi",           "Bens de Capital",        "Máquinas e Equipamentos",        QO),
   stock("RAPT4",  "Randon S.A. Implementos e Participações",             "Randon",         "Bens de Capital",        "Implementos Rodoviários",        QO),
@@ -58,8 +58,8 @@ export const B3_UNIVERSE: B3Asset[] = [
   stock("PETR4",  "Petróleo Brasileiro S.A.",                            "Petrobras PN",   "Petróleo e Gás",         "Exploração e Refino",            CVM, false, true),
   stock("PETR3",  "Petróleo Brasileiro S.A.",                            "Petrobras ON",   "Petróleo e Gás",         "Exploração e Refino",            CVM, false, true),
   stock("PRIO3",  "PRIO S.A.",                                           "PRIO",           "Petróleo e Gás",         "Exploração e Produção",          CVM, false, true),
-  stock("VBBR3",  "Vibra Energia S.A.",                                  "Vibra",          "Petróleo e Gás",         "Distribuição de Combustíveis",   QO),
-  stock("RAIZ4",  "Raízen S.A.",                                         "Raízen",         "Petróleo e Gás",         "Biocombustíveis",                QO),
+  stock("VBBR3",  "Vibra Energia S.A.",                                  "Vibra",          "Petróleo e Gás",         "Distribuição de Combustíveis",   CVM, false, true),
+  stock("RAIZ4",  "Raízen S.A.",                                         "Raízen",         "Petróleo e Gás",         "Biocombustíveis",                CVM, false, true),
   stock("RECV3",  "PetroRecôncavo S.A.",                                 "PetroRecôncavo", "Petróleo e Gás",         "Exploração e Produção",          QO),
   stock("RRRP3",  "3R Petroleum Óleo e Gás S.A.",                       "3R Petroleum",   "Petróleo e Gás",         "Exploração e Produção",          QO),
   stock("CSAN3",  "Cosan S.A.",                                          "Cosan",          "Petróleo e Gás",         "Distribuição e Energia",         QO),
@@ -71,10 +71,10 @@ export const B3_UNIVERSE: B3Asset[] = [
   stock("BRAP4",  "Bradespar S.A.",                                      "Bradespar",      "Mineração",              "Holding Industrial",             QO),
 
   // ── Siderurgia e Metalurgia ──────────────────────────────────────────────────
-  stock("GGBR4",  "Gerdau S.A.",                                         "Gerdau",         "Siderurgia",             "Aços Longos",                    QO),
-  stock("GGBR3",  "Gerdau S.A.",                                         "Gerdau ON",      "Siderurgia",             "Aços Longos",                    QO),
+  stock("GGBR4",  "Gerdau S.A.",                                         "Gerdau",         "Siderurgia",             "Aços Longos",                    CVM, false, true),
+  stock("GGBR3",  "Gerdau S.A.",                                         "Gerdau ON",      "Siderurgia",             "Aços Longos",                    CVM, false, true),
   stock("GOAU4",  "Metalúrgica Gerdau S.A.",                             "Gerdau Met",     "Siderurgia",             "Holding Industrial",             QO),
-  stock("CSNA3",  "Companhia Siderúrgica Nacional",                      "CSN",            "Siderurgia",             "Aços Planos",                    QO),
+  stock("CSNA3",  "Companhia Siderúrgica Nacional",                      "CSN",            "Siderurgia",             "Aços Planos",                    CVM, false, true),
   stock("USIM5",  "Usiminas S.A.",                                       "Usiminas",       "Siderurgia",             "Aços Planos",                    QO),
   stock("FESA4",  "Ferbasa S.A.",                                        "Ferbasa",        "Siderurgia",             "Ferro-ligas",                    QO),
 
@@ -84,7 +84,7 @@ export const B3_UNIVERSE: B3Asset[] = [
 
   // ── Papel e Celulose ─────────────────────────────────────────────────────────
   stock("SUZB3",  "Suzano S.A.",                                         "Suzano",         "Papel e Celulose",       "Celulose",                       CVM, false, true),
-  stock("KLBN11", "Klabin S.A.",                                         "Klabin",         "Papel e Celulose",       "Papel e Embalagens",             QO, false, false, "unit"),
+  stock("KLBN11", "Klabin S.A.",                                         "Klabin",         "Papel e Celulose",       "Papel e Embalagens",             CVM, false, true,  "unit"),
   stock("DXCO3",  "Dexco S.A.",                                          "Dexco",          "Papel e Celulose",       "Painéis de Madeira",             QO),
 
   // ── Energia Elétrica ─────────────────────────────────────────────────────────
@@ -93,12 +93,12 @@ export const B3_UNIVERSE: B3Asset[] = [
   stock("ELET3",  "Centrais Elétricas Brasileiras S.A.",                 "Eletrobras ON",  "Energia Elétrica",       "Geração e Transmissão",          CVM, false, true),
   stock("ELET6",  "Centrais Elétricas Brasileiras S.A.",                 "Eletrobras PNB", "Energia Elétrica",       "Geração e Transmissão",          QO),
   stock("EQTL3",  "Equatorial Energia S.A.",                             "Equatorial",     "Energia Elétrica",       "Distribuição de Energia",        CVM, false, true),
-  stock("ENEV3",  "Eneva S.A.",                                          "Eneva",          "Energia Elétrica",       "Geração Termelétrica",           QO),
-  stock("CMIG4",  "Cemig – Companhia Energética de Minas Gerais",        "CEMIG PN",       "Energia Elétrica",       "Geração e Distribuição",         QO),
-  stock("CMIG3",  "Cemig – Companhia Energética de Minas Gerais",        "CEMIG ON",       "Energia Elétrica",       "Geração e Distribuição",         QO),
-  stock("CPLE6",  "Copel – Companhia Paranaense de Energia",             "Copel PNB",      "Energia Elétrica",       "Geração e Distribuição",         QO),
-  stock("CPLE3",  "Copel – Companhia Paranaense de Energia",             "Copel ON",       "Energia Elétrica",       "Geração e Distribuição",         QO),
-  stock("ALUP11", "Alupar Investimento S.A.",                            "Alupar",         "Energia Elétrica",       "Transmissão de Energia",         QO, false, false, "unit"),
+  stock("ENEV3",  "Eneva S.A.",                                          "Eneva",          "Energia Elétrica",       "Geração Termelétrica",           CVM, false, true),
+  stock("CMIG4",  "Cemig – Companhia Energética de Minas Gerais",        "CEMIG PN",       "Energia Elétrica",       "Geração e Distribuição",         CVM, false, true),
+  stock("CMIG3",  "Cemig – Companhia Energética de Minas Gerais",        "CEMIG ON",       "Energia Elétrica",       "Geração e Distribuição",         CVM, false, true),
+  stock("CPLE6",  "Copel – Companhia Paranaense de Energia",             "Copel PNB",      "Energia Elétrica",       "Geração e Distribuição",         CVM, false, true),
+  stock("CPLE3",  "Copel – Companhia Paranaense de Energia",             "Copel ON",       "Energia Elétrica",       "Geração e Distribuição",         CVM, false, true),
+  stock("ALUP11", "Alupar Investimento S.A.",                            "Alupar",         "Energia Elétrica",       "Transmissão de Energia",         CVM, false, true,  "unit"),
   stock("TAEE11", "Taesa – Transmissora Aliança de Energia Elétrica S.A.", "Taesa",        "Energia Elétrica",       "Transmissão de Energia",         QO, false, false, "unit"),
   stock("TRPL4",  "CTEEP – Cia. de Transmissão de Energia Elétrica Paulista", "ISA CTEEP","Energia Elétrica",       "Transmissão de Energia",         QO),
   stock("AURE3",  "Auren Energia S.A.",                                  "Auren Energia",  "Energia Elétrica",       "Geração de Energia",             QO),
@@ -108,13 +108,13 @@ export const B3_UNIVERSE: B3Asset[] = [
   stock("CGAS3",  "Comgás – Companhia de Gás de São Paulo",              "Comgás",         "Energia Elétrica",       "Distribuição de Gás",            QO),
 
   // ── Saneamento ───────────────────────────────────────────────────────────────
-  stock("SBSP3",  "Sabesp – Cia. de Saneamento Básico do Estado de SP",  "Sabesp",         "Saneamento",             "Água e Esgoto",                  QO),
+  stock("SBSP3",  "Sabesp – Cia. de Saneamento Básico do Estado de SP",  "Sabesp",         "Saneamento",             "Água e Esgoto",                  CVM, false, true),
   stock("CSMG3",  "Copasa – Companhia de Saneamento de Minas Gerais",    "Copasa",         "Saneamento",             "Água e Esgoto",                  QO),
   stock("SAPR11", "Sanepar – Companhia de Saneamento do Paraná",         "Sanepar",        "Saneamento",             "Água e Esgoto",                  QO, false, false, "unit"),
 
   // ── Telecomunicações ─────────────────────────────────────────────────────────
   stock("VIVT3",  "Telefônica Brasil S.A.",                              "Vivo",           "Telecomunicações",       "Telefonia Fixa e Móvel",         VA,  true,  true),
-  stock("TIMS3",  "TIM S.A.",                                            "TIM",            "Telecomunicações",       "Telefonia Móvel",                QO),
+  stock("TIMS3",  "TIM S.A.",                                            "TIM",            "Telecomunicações",       "Telefonia Móvel",                CVM, false, true),
 
   // ── Bebidas ──────────────────────────────────────────────────────────────────
   stock("ABEV3",  "Ambev S.A.",                                          "Ambev",          "Bebidas",                "Cervejas e Bebidas",             VA,  true,  true),
@@ -130,8 +130,8 @@ export const B3_UNIVERSE: B3Asset[] = [
   stock("AGRO3",  "BrasilAgro – Cia. Brasileira de Propriedades Agrícolas", "BrasilAgro", "Alimentos",              "Agropecuária",                   QO),
 
   // ── Transporte e Logística ───────────────────────────────────────────────────
-  stock("RENT3",  "Localiza Rent a Car S.A.",                            "Localiza",       "Transporte",             "Locação de Veículos",            QO),
-  stock("RAIL3",  "Rumo S.A.",                                           "Rumo",           "Transporte",             "Transporte Ferroviário",         QO),
+  stock("RENT3",  "Localiza Rent a Car S.A.",                            "Localiza",       "Transporte",             "Locação de Veículos",            CVM, false, true),
+  stock("RAIL3",  "Rumo S.A.",                                           "Rumo",           "Transporte",             "Transporte Ferroviário",         CVM, false, true),
   stock("MOVI3",  "Movida Participações S.A.",                           "Movida",         "Transporte",             "Locação de Veículos",            QO),
   stock("TGMA3",  "Tegma Gestão Logística S.A.",                         "Tegma",          "Transporte",             "Logística Rodoviária",           QO),
   stock("SIMH3",  "Simpar S.A.",                                         "Simpar",         "Transporte",             "Locação e Logística",            QO),
@@ -143,8 +143,8 @@ export const B3_UNIVERSE: B3Asset[] = [
   stock("SEQL3",  "Sequoia Logística e Transportes S.A.",                "Sequoia",        "Transporte",             "Logística",                      QO),
 
   // ── Varejo ───────────────────────────────────────────────────────────────────
-  stock("LREN3",  "Lojas Renner S.A.",                                   "Renner",         "Varejo",                 "Vestuário",                      QO),
-  stock("ASAI3",  "Assaí Atacadista S.A.",                               "Assaí",          "Varejo",                 "Atacado Alimentar",              QO),
+  stock("LREN3",  "Lojas Renner S.A.",                                   "Renner",         "Varejo",                 "Vestuário",                      CVM, false, true),
+  stock("ASAI3",  "Assaí Atacadista S.A.",                               "Assaí",          "Varejo",                 "Atacado Alimentar",              CVM, false, true),
   stock("MGLU3",  "Magazine Luiza S.A.",                                 "Magalu",         "Varejo",                 "Varejo Eletroeletrônico",        QO),
   stock("PCAR3",  "Grupo Pão de Açúcar S.A.",                            "GPA",            "Varejo",                 "Supermercados",                  QO),
   stock("CRFB3",  "Atacadão S.A.",                                       "Carrefour Brasil","Varejo",                "Hipermercados",                  QO),
@@ -205,8 +205,8 @@ export const B3_UNIVERSE: B3Asset[] = [
   // ── Saúde ────────────────────────────────────────────────────────────────────
   stock("HAPV3",  "Hapvida Participações e Investimentos S.A.",          "Hapvida",        "Saúde",                  "Planos de Saúde",                QO),
   stock("RDOR3",  "Rede D'Or São Luiz S.A.",                            "Rede D'Or",      "Saúde",                  "Hospitais",                      QO),
-  stock("RADL3",  "Raia Drogasil S.A.",                                  "RD Saúde",       "Saúde",                  "Farmácias e Drogarias",          QO),
-  stock("HYPE3",  "Hypera S.A.",                                         "Hypera Pharma",  "Saúde",                  "Medicamentos",                   QO),
+  stock("RADL3",  "Raia Drogasil S.A.",                                  "RD Saúde",       "Saúde",                  "Farmácias e Drogarias",          CVM, false, true),
+  stock("HYPE3",  "Hypera S.A.",                                         "Hypera Pharma",  "Saúde",                  "Medicamentos",                   CVM, false, true),
   stock("FLRY3",  "Fleury S.A.",                                         "Fleury",         "Saúde",                  "Diagnósticos",                   QO),
   stock("ODPV3",  "Odontoprev S.A.",                                     "Odontoprev",     "Saúde",                  "Planos Odontológicos",           QO),
   stock("QUAL3",  "Qualicorp Consultoria e Corretora de Benefícios S.A.","Qualicorp",      "Saúde",                  "Benefícios Corporativos",        QO),
