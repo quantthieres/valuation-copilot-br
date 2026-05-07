@@ -476,6 +476,40 @@ If `BRAPI_TOKEN` is not set or if brapi is unreachable:
 
 ---
 
+## Coverage status
+
+Each asset in the B3 universe carries a `coverageStatus` field that describes what the platform currently supports for it. This drives search dropdown badges and the empty-state experience when a ticker without a full dashboard is selected.
+
+| Status | Badge label | Meaning |
+|--------|-------------|---------|
+| `valuation_available` | **Valuation** | Full dashboard: DCF, sensitivity table, multiples, historical chart. Mock data validated. |
+| `cvm_financials` | **CVM** | Real DFP/CVM annual financials are fetched. Full valuation model is still being validated for this asset. |
+| `quote_only` | **Cotação** | No financial statements yet. Live price from brapi is displayed in the empty state. |
+| `sector_specific_model_required` | **Modelo específico** | DCF does not apply — asset requires DDM, NAV, or another sector-specific method (banks, insurers, FIIs, ETFs, holdings). |
+| `unavailable` | **Em breve** | Asset is in the search universe but no data integration is available yet. |
+
+### Current coverage (approximate)
+
+- 5 assets with `valuation_available`: WEGE3, ABEV3, EGIE3, CPFE3, VIVT3
+- 7 assets with `cvm_financials`: PETR3, PETR4, VALE3, SUZB3, PRIO3, ELET3, EQTL3
+- ~30 assets with `sector_specific_model_required`: major banks (ITUB4, BBDC4, BBAS3, SANB11), insurers (BBSE3, IRBR3), FIIs (MXRF11, XPML11, HGLG11, …), ETFs (BOVA11, IVVB11, …), and holding companies
+- ~130+ assets with `quote_only`: most mid- and large-cap equities, units, and BDRs
+
+### Asset types
+
+The `assetType` field classifies each asset structurally:
+
+| Type | Description |
+|------|-------------|
+| `stock` | ON or PN ordinary/preferred share |
+| `unit` | Certificate of deposit (e.g., TAEE11, BPAC11) |
+| `fii` | Fundo de Investimento Imobiliário |
+| `etf` | Exchange Traded Fund |
+| `bdr` | Brazilian Depositary Receipt |
+| `unknown` | Classification pending |
+
+---
+
 ## Aviso ⚠️
 
 Este projeto é educacional e está em desenvolvimento.

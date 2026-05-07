@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { B3_UNIVERSE, type B3Company } from "@/data/b3-universe";
+import { COVERAGE_BADGE } from "@/data/coverage-types";
 
 const NAV_LINKS = [
   { label: "Painel",      href: "/"           },
@@ -111,10 +112,10 @@ export default function NavBar({ onSelectCompany, selectedTicker = "" }: NavBarP
                     <span style={styles.dropdownSector}>{c.sector}</span>
                     <span style={{
                       ...styles.dropdownBadge,
-                      background: c.hasMockData ? "#dcfce7" : "#f1f5f9",
-                      color:      c.hasMockData ? "#15803d" : "#64748b",
+                      background: COVERAGE_BADGE[c.coverageStatus].bg,
+                      color:      COVERAGE_BADGE[c.coverageStatus].color,
                     }}>
-                      {c.hasMockData ? "Disponível" : "Em breve"}
+                      {COVERAGE_BADGE[c.coverageStatus].label}
                     </span>
                   </div>
                 </button>

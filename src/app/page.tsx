@@ -19,6 +19,7 @@ import type { NormalizedFinancials } from "@/lib/cvm/types";
 import { getCompanyData, DEFAULT_DATA } from "@/data/companies";
 import { B3_UNIVERSE } from "@/data/b3-universe";
 import type { MarketDataQuote } from "@/lib/market-data/types";
+import { COVERAGE_BADGE, COVERAGE_DESCRIPTION, type CoverageStatus } from "@/data/coverage-types";
 import {
   recalculateDcf, sensitivityFairValue,
   type Assumptions, type DcfResult,
@@ -48,7 +49,25 @@ function TabBar({ activeTab, onTabChange }: { activeTab: string; onTabChange: (t
   );
 }
 
-function EmptyStateView({ ticker, companyName }: { ticker: string; companyName: string }) {
+function EmptyStateView({
+  ticker,
+  companyName,
+  coverageStatus,
+  quote,
+  quoteLoading,
+}: {
+  ticker: string;
+  companyName: string;
+  coverageStatus?: CoverageStatus;
+  quote?: MarketDataQuote | null;
+  quoteLoading?: boolean;
+}) {
+  const status = coverageStatus ?? "unavailable";
+  const badge = COVERAGE_BADGE[status];
+  const description = COVERAGE_DESCRIPTION[status];
+  const showQuote = status === "quote_only" && quote != null && !quoteLoading;
+  const isUp = (quote?.changePercent ?? 0) >= 0;
+
   return (
     <div style={{
       display: "flex", flexDirection: "column", alignItems: "center",
@@ -63,27 +82,73 @@ function EmptyStateView({ ticker, companyName }: { ticker: string; companyName: 
       </div>
       <div style={{
         background: "#fff", border: "1px solid #e2e8f0", borderRadius: 14,
-        padding: "36px 48px", maxWidth: 520,
+        padding: "36px 48px", maxWidth: 540,
         boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
       }}>
-        <div style={{
-          display: "inline-block", background: "#f1f5f9", color: "#475569",
-          fontSize: 12, fontWeight: 700, padding: "3px 10px", borderRadius: 6,
-          fontFamily: "'JetBrains Mono', monospace", marginBottom: 16,
-          letterSpacing: "0.5px",
-        }}>
-          {ticker}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 16 }}>
+          <div style={{
+            background: "#f1f5f9", color: "#475569",
+            fontSize: 12, fontWeight: 700, padding: "3px 10px", borderRadius: 6,
+            fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.5px",
+          }}>
+            {ticker}
+          </div>
+          <div style={{
+            fontSize: 11, fontWeight: 600, padding: "3px 9px", borderRadius: 20,
+            background: badge.bg, color: badge.color,
+          }}>
+            {badge.label}
+          </div>
         </div>
+
         <h2 style={{ margin: "0 0 10px", fontSize: 18, fontWeight: 700, color: "#0f172a" }}>
           {companyName}
         </h2>
+
         <p style={{ margin: "0 0 8px", fontSize: 14, color: "#374151", lineHeight: 1.6 }}>
-          Dados completos ainda não disponíveis para este ativo no MVP.
+          {description}
         </p>
-        <p style={{ margin: 0, fontSize: 13, color: "#64748b", lineHeight: 1.6 }}>
-          Este ticker já está no universo de busca. A integração de dados financeiros será
-          adicionada nas próximas etapas.
-        </p>
+
+        {status === "cvm_financials" && (
+          <p style={{ margin: "0 0 8px", fontSize: 13, color: "#64748b", lineHeight: 1.6 }}>
+            Os dados financeiros reais da DFP/CVM já estão integrados. O dashboard completo com DCF será habilitado após validação do modelo.
+          </p>
+        )}
+
+        {status === "sector_specific_model_required" && (
+          <p style={{ margin: "0 0 8px", fontSize: 13, color: "#64748b", lineHeight: 1.6 }}>
+            Bancos, seguradoras, FIIs e holdings requerem modelos baseados em dividendos (DDM), ROE implícito ou NAV, que estão em desenvolvimento.
+          </p>
+        )}
+
+        {status === "unavailable" && (
+          <p style={{ margin: "0 0 8px", fontSize: 13, color: "#64748b", lineHeight: 1.6 }}>
+            Este ticker já está no universo de busca. A integração de dados financeiros será adicionada nas próximas etapas.
+          </p>
+        )}
+
+        {showQuote && (
+          <div style={{
+            marginTop: 20, padding: "14px 20px",
+            background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 10,
+          }}>
+            <div style={{ fontSize: 10, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 6 }}>
+              Cotação atual · Fonte: brapi
+            </div>
+            <div style={{ fontSize: 28, fontWeight: 700, color: "#0f172a", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "-1px" }}>
+              R$ {quote!.price.toFixed(2).replace(".", ",")}
+            </div>
+            <div style={{ fontSize: 13, fontWeight: 500, color: isUp ? "#16a34a" : "#dc2626", fontFamily: "'JetBrains Mono', monospace", marginTop: 3 }}>
+              {isUp ? "▲" : "▼"} {Math.abs(quote!.changePercent ?? 0).toFixed(2).replace(".", ",")}% hoje
+            </div>
+          </div>
+        )}
+
+        {quoteLoading && status === "quote_only" && (
+          <div style={{ marginTop: 16, fontSize: 12, color: "#94a3b8" }}>
+            Buscando cotação...
+          </div>
+        )}
       </div>
     </div>
   );
@@ -136,15 +201,9 @@ export default function Home() {
     });
   }, [financialSource, cvmFinancials, companyData]);
 
-  // Fetch real market quote whenever the selected ticker changes.
-  // Falls back silently to mock data if the API is unavailable or returns null.
+  // Fetch real market quote for any selected ticker (including those without mock data).
+  // Falls back silently to null if the API is unavailable.
   useEffect(() => {
-    if (!getCompanyData(selectedTicker)) {
-      setMarketQuote(null);
-      setQuoteLoading(false);
-      return;
-    }
-
     let cancelled = false;
     setMarketQuote(null);
     setQuoteLoading(true);
@@ -154,7 +213,7 @@ export default function Home() {
       .then((body: { quote: MarketDataQuote | null }) => {
         if (!cancelled) setMarketQuote(body.quote ?? null);
       })
-      .catch(() => { /* network error — keep mock data */ })
+      .catch(() => { /* network error — keep null */ })
       .finally(() => { if (!cancelled) setQuoteLoading(false); });
 
     return () => { cancelled = true; };
@@ -389,6 +448,9 @@ export default function Home() {
         <EmptyStateView
           ticker={selectedTicker}
           companyName={b3Entry?.companyName ?? selectedTicker}
+          coverageStatus={b3Entry?.coverageStatus}
+          quote={marketQuote}
+          quoteLoading={quoteLoading}
         />
       )}
 
