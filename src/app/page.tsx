@@ -110,6 +110,12 @@ function EmptyStateView({
           {description}
         </p>
 
+        {status === "preliminary_valuation" && (
+          <p style={{ margin: "0 0 8px", fontSize: 13, color: "#64748b", lineHeight: 1.6 }}>
+            Os dados CVM estão sendo buscados. Se o dashboard não aparecer, os dados disponíveis podem não ser suficientes para gerar o valuation preliminar.
+          </p>
+        )}
+
         {status === "cvm_financials" && (
           <p style={{ margin: "0 0 8px", fontSize: 13, color: "#64748b", lineHeight: 1.6 }}>
             Os dados financeiros reais da DFP/CVM já estão integrados. O dashboard completo com DCF será habilitado após validação do modelo.

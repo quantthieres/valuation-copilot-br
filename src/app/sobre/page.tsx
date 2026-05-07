@@ -188,6 +188,7 @@ function DataSourceRow({
 
 const COVERAGE_STATUS_ORDER: CoverageStatus[] = [
   "valuation_available",
+  "preliminary_valuation",
   "cvm_financials",
   "quote_only",
   "sector_specific_model_required",
@@ -359,8 +360,8 @@ export default function SobrePage() {
             marginTop: 14, background: "#f8fafc", border: "1px solid #e2e8f0",
             borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#64748b", lineHeight: 1.6,
           }}>
-            Cobertura atual aproximada: 5 ativos com Valuation completo · 7 com dados CVM ·
-            ~30 com Modelo específico (bancos, FIIs, ETFs) · 130+ com Cotação · restantes Em breve.
+            Cobertura atual aproximada: 5 ativos com Valuation completo · 27 com Valuation preliminar ·
+            3 com dados CVM · ~29 com Modelo específico (bancos, FIIs, ETFs) · 98 com Cotação.
           </div>
         </Card>
 

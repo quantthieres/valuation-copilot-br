@@ -22,7 +22,7 @@ export interface PreliminaryBuilderParams {
 export function isPreliminaryEligible(b3Entry: B3Asset): boolean {
   return (
     !b3Entry.hasMockData &&
-    b3Entry.coverageStatus === "cvm_financials" &&
+    (b3Entry.coverageStatus === "cvm_financials" || b3Entry.coverageStatus === "preliminary_valuation") &&
     b3Entry.hasCvmMapping &&
     (b3Entry.assetType === "stock" || b3Entry.assetType === "unit")
   );

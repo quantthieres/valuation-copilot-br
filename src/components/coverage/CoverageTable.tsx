@@ -15,12 +15,13 @@ const ASSET_TYPE_LABEL: Record<AssetType, string> = {
 };
 
 const STATUS_OPTIONS: { value: CoverageStatus | ""; label: string }[] = [
-  { value: "",                              label: "Todos os status"    },
-  { value: "valuation_available",           label: "Valuation"          },
-  { value: "cvm_financials",               label: "CVM"                },
-  { value: "quote_only",                   label: "Cotação"            },
-  { value: "sector_specific_model_required", label: "Modelo específico" },
-  { value: "unavailable",                  label: "Em breve"           },
+  { value: "",                              label: "Todos os status"        },
+  { value: "valuation_available",           label: "Valuation"              },
+  { value: "preliminary_valuation",         label: "Valuation preliminar"   },
+  { value: "cvm_financials",               label: "CVM"                    },
+  { value: "quote_only",                   label: "Cotação"                },
+  { value: "sector_specific_model_required", label: "Modelo específico"    },
+  { value: "unavailable",                  label: "Em breve"               },
 ];
 
 const TYPE_OPTIONS: { value: AssetType | ""; label: string }[] = [

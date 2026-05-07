@@ -96,7 +96,11 @@ describe("isPreliminaryEligible", () => {
     expect(isPreliminaryEligible({ ...ENTRY, hasMockData: true })).toBe(false);
   });
 
-  it("returns false when coverageStatus is not cvm_financials", () => {
+  it("returns true when coverageStatus is preliminary_valuation", () => {
+    expect(isPreliminaryEligible({ ...ENTRY, coverageStatus: "preliminary_valuation" })).toBe(true);
+  });
+
+  it("returns false when coverageStatus is quote_only or valuation_available", () => {
     expect(isPreliminaryEligible({ ...ENTRY, coverageStatus: "quote_only" })).toBe(false);
     expect(isPreliminaryEligible({ ...ENTRY, coverageStatus: "valuation_available" })).toBe(false);
   });

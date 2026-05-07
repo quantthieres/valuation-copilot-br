@@ -3,6 +3,7 @@ import { COVERAGE_BADGE, COVERAGE_DESCRIPTION, type CoverageStatus } from "./cov
 
 const ALL_STATUSES: CoverageStatus[] = [
   "valuation_available",
+  "preliminary_valuation",
   "cvm_financials",
   "quote_only",
   "sector_specific_model_required",
@@ -63,6 +64,15 @@ describe("COVERAGE_BADGE", () => {
 
   it("unavailable label is 'Em breve'", () => {
     expect(COVERAGE_BADGE["unavailable"].label).toBe("Em breve");
+  });
+
+  it("preliminary_valuation label is 'Valuation preliminar'", () => {
+    expect(COVERAGE_BADGE["preliminary_valuation"].label).toBe("Valuation preliminar");
+  });
+
+  it("preliminary_valuation badge has violet bg and color", () => {
+    expect(COVERAGE_BADGE["preliminary_valuation"].bg).toBe("#ede9fe");
+    expect(COVERAGE_BADGE["preliminary_valuation"].color).toBe("#7c3aed");
   });
 });
 

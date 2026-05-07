@@ -8,6 +8,7 @@ import { COVERAGE_BADGE, COVERAGE_DESCRIPTION, type CoverageStatus } from "@/dat
 
 const STATUSES: CoverageStatus[] = [
   "valuation_available",
+  "preliminary_valuation",
   "cvm_financials",
   "quote_only",
   "sector_specific_model_required",
@@ -23,8 +24,10 @@ function countByStatus(): Record<CoverageStatus, number> {
 const STATUS_DESCRIPTIONS: Record<CoverageStatus, string> = {
   valuation_available:
     "Dashboard completo com DCF, análise de sensibilidade e múltiplos de mercado disponíveis.",
+  preliminary_valuation:
+    "Valuation preliminar: DCF gerado automaticamente com dados CVM para empresas não financeiras que passaram nos critérios mínimos de elegibilidade.",
   cvm_financials:
-    "Dados financeiros anuais extraídos da DFP via CVM Dados Abertos. Valuation preliminar em validação.",
+    "Dados financeiros anuais extraídos da DFP via CVM Dados Abertos. Dados disponíveis mas valuation ainda não é gerado automaticamente para este ativo.",
   quote_only:
     "Cotação de mercado disponível via brapi. Dados fundamentalistas ainda não processados.",
   sector_specific_model_required:

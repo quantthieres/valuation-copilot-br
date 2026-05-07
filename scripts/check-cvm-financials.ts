@@ -63,7 +63,7 @@ interface ApiFinancialsResponse {
 
 // ─── Eligibility logic (mirrored from cvm-valuation-builder.ts) ──────────────
 
-const PRELIMINARY_STATUSES: CoverageStatus[] = ["cvm_financials"];
+const PRELIMINARY_STATUSES: CoverageStatus[] = ["cvm_financials", "preliminary_valuation"];
 const ELIGIBLE_TYPES: AssetType[] = ["stock", "unit"];
 
 function assetEligibilityReason(asset: B3Asset): string | null {
@@ -380,7 +380,9 @@ function printTable(rows: AuditRow[]): void {
   console.log(SEP);
 
   for (const r of rows) {
-    const st   = r.coverageStatus === "cvm_financials" ? "cvm" : "val";
+    const st   = r.coverageStatus === "cvm_financials"       ? "cvm"
+               : r.coverageStatus === "preliminary_valuation" ? "pre"
+               : "val";
     const map  = r.hasCvmMapping ? "Y" : "N";
     const code = r.cvmCode ?? "—";
     const yrs  = r.yearsReturned > 0 ? String(r.yearsReturned) : "—";
@@ -432,7 +434,7 @@ function buildSummary(rows: AuditRow[]): Summary {
     withAnyData:        rows.filter(r => r.yearsReturned > 0).length,
     withThreePlusYears: rows.filter(r => r.yearsReturned >= 3).length,
     eligible:           rows.filter(r => r.overallEligible).length,
-    notEligible:        rows.filter(r => !r.overallEligible && !r.fetchError && r.coverageStatus === "cvm_financials").length,
+    notEligible:        rows.filter(r => !r.overallEligible && !r.fetchError && (r.coverageStatus === "cvm_financials" || r.coverageStatus === "preliminary_valuation")).length,
     errors:             rows.filter(r => r.fetchError !== null).length,
   };
 }
@@ -454,11 +456,12 @@ function printSummary(summary: Summary): void {
 
 function printIneligibleDetail(rows: AuditRow[]): void {
   const ineligible = rows.filter(
-    r => !r.overallEligible && !r.fetchError && r.coverageStatus === "cvm_financials",
+    r => !r.overallEligible && !r.fetchError &&
+      (r.coverageStatus === "cvm_financials" || r.coverageStatus === "preliminary_valuation"),
   );
   if (ineligible.length === 0) return;
 
-  console.log(colored("── Not eligible (cvm_financials) ────────────", BOLD));
+  console.log(colored("── Not eligible (cvm_financials / preliminary_valuation) ──", BOLD));
   for (const r of ineligible) {
     const reason = r.eligibleReason ?? "unknown";
     console.log(`  ${padR(r.ticker, 7)}  ${colored(reason, RED)}`);
@@ -510,7 +513,7 @@ async function main(): Promise<void> {
   const { baseUrl, singleTicker, json, timeoutMs, retries, retryDelayMs, debug } = parseArgs();
   const fetchOpts: FetchOpts = { timeoutMs, retries, retryDelayMs, debug };
 
-  const TARGET_STATUSES: CoverageStatus[] = ["cvm_financials", "valuation_available"];
+  const TARGET_STATUSES: CoverageStatus[] = ["cvm_financials", "preliminary_valuation", "valuation_available"];
 
   let assets = B3_UNIVERSE.filter(a => TARGET_STATUSES.includes(a.coverageStatus));
 
@@ -529,7 +532,7 @@ async function main(): Promise<void> {
     console.log(`Base URL   : ${baseUrl}`);
     console.log(`Checking   : ${assets.length} ticker(s)`);
     console.log(`Timeout    : ${timeoutMs}ms  Retries: ${retries}  RetryDelay: ${retryDelayMs}ms`);
-    console.log(`Statuses   : cvm_financials + valuation_available`);
+    console.log(`Statuses   : cvm_financials + preliminary_valuation + valuation_available`);
     console.log(
       `Note       : All monetary values in BRL billions (R$B). ` +
       `Eligibility = preliminary CVM valuation flow.`,
