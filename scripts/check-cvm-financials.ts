@@ -6,15 +6,22 @@
  *   npx tsx scripts/check-cvm-financials.ts [options]
  *
  * Options:
- *   --url URL         Base URL of the running dev server (default: http://localhost:3000)
- *   --ticker TICKER   Audit a single ticker only
- *   --json            Output results as JSON instead of a table
+ *   --url URL                Base URL of the running dev server (default: http://localhost:3000)
+ *   --ticker TICKER          Audit a single ticker only
+ *   --json                   Output results as JSON instead of a table
+ *   --timeout-ms N           Fetch timeout in ms (default: 120000)
+ *   --retries N              Retry count on timeout/connection failure (default: 2)
+ *   --retry-delay-ms N       Delay between retries in ms (default: 1000)
+ *   --debug                  Print per-attempt debug info to stderr
  *
  * Examples:
  *   npx tsx scripts/check-cvm-financials.ts
  *   npx tsx scripts/check-cvm-financials.ts --ticker PETR4
  *   npx tsx scripts/check-cvm-financials.ts --json > audit.json
  *   npx tsx scripts/check-cvm-financials.ts --url http://localhost:3001
+ *   npx tsx scripts/check-cvm-financials.ts --ticker WEGE3 --debug
+ *   npx tsx scripts/check-cvm-financials.ts --ticker WEGE3 --retries 3 --retry-delay-ms 1500
+ *   npx tsx scripts/check-cvm-financials.ts --timeout-ms 180000
  *
  * This script is NOT imported by any production code. It does NOT affect the build.
  * Run with the dev server active: npm run dev
@@ -98,90 +105,192 @@ function dataEligibilityReason(financials: NormalizedFinancials[]): string | nul
 
 // ─── CLI args ─────────────────────────────────────────────────────────────────
 
-function parseArgs(): { baseUrl: string; singleTicker: string | null; json: boolean } {
-  const args = process.argv.slice(2);
-  let baseUrl = "http://localhost:3000";
-  let singleTicker: string | null = null;
-  let json = false;
-
-  for (let i = 0; i < args.length; i++) {
-    if (args[i] === "--url"    && args[i + 1]) { baseUrl      = args[++i]; continue; }
-    if (args[i] === "--ticker" && args[i + 1]) { singleTicker = args[++i].toUpperCase(); continue; }
-    if (args[i] === "--json")                  { json = true; continue; }
-    // Legacy: bare URL as first positional argument
-    if (!args[i].startsWith("--") && i === 0) { baseUrl = args[i]; }
-  }
-
-  return { baseUrl, singleTicker, json };
+interface ParsedArgs {
+  baseUrl:      string;
+  singleTicker: string | null;
+  json:         boolean;
+  timeoutMs:    number;
+  retries:      number;
+  retryDelayMs: number;
+  debug:        boolean;
 }
 
-// ─── API fetch ────────────────────────────────────────────────────────────────
+function parseArgs(): ParsedArgs {
+  const args = process.argv.slice(2);
+  let baseUrl      = "http://localhost:3000";
+  let singleTicker: string | null = null;
+  let json         = false;
+  let timeoutMs    = 120_000;
+  let retries      = 2;
+  let retryDelayMs = 1_000;
+  let debug        = false;
+
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === "--url"            && args[i + 1]) { baseUrl      = args[++i]; continue; }
+    if (args[i] === "--ticker"         && args[i + 1]) { singleTicker = args[++i].toUpperCase(); continue; }
+    if (args[i] === "--json")                          { json         = true; continue; }
+    if (args[i] === "--timeout-ms"     && args[i + 1]) { timeoutMs    = parseInt(args[++i], 10); continue; }
+    if (args[i] === "--retries"        && args[i + 1]) { retries      = parseInt(args[++i], 10); continue; }
+    if (args[i] === "--retry-delay-ms" && args[i + 1]) { retryDelayMs = parseInt(args[++i], 10); continue; }
+    if (args[i] === "--debug")                         { debug        = true; continue; }
+    // Legacy: bare URL as first positional argument
+    if (!args[i].startsWith("--") && i === 0)          { baseUrl = args[i]; }
+  }
+
+  return { baseUrl, singleTicker, json, timeoutMs, retries, retryDelayMs, debug };
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function debugLog(line: string): void {
+  process.stderr.write(`[debug] ${line}\n`);
+}
+
+// ─── API fetch with retry ─────────────────────────────────────────────────────
+
+interface FetchOpts {
+  timeoutMs:    number;
+  retries:      number;
+  retryDelayMs: number;
+  debug:        boolean;
+}
+
+interface FetchResult {
+  data:              ApiFinancialsResponse | null;
+  error:             string | null;
+  attempts:          number;
+  finalErrorMessage: string | null;
+}
 
 async function fetchFinancials(
   ticker: string,
   baseUrl: string,
-): Promise<{ data: ApiFinancialsResponse | null; error: string | null }> {
-  try {
-    const res = await fetch(`${baseUrl}/api/cvm/financials/${ticker}`, {
-      signal: AbortSignal.timeout(15_000),
-    });
-    if (!res.ok) return { data: null, error: `HTTP ${res.status}` };
-    const body = (await res.json()) as ApiFinancialsResponse;
-    return { data: body, error: body.error ?? null };
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return { data: null, error: msg.includes("ECONNREFUSED") ? "server not running" : msg };
+  opts: FetchOpts,
+): Promise<FetchResult> {
+  const { timeoutMs, retries, retryDelayMs, debug } = opts;
+  const maxAttempts = retries + 1;
+  const url = `${baseUrl}/api/cvm/financials/${ticker}`;
+
+  let lastErrorName = "";
+  let lastErrorMsg  = "";
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const willRetry = attempt < maxAttempts;
+
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
+
+      if (!res.ok) {
+        const errMsg = `HTTP ${res.status}`;
+        if (debug) {
+          debugLog(
+            `${ticker} attempt ${attempt}/${maxAttempts} url=${url} timeoutMs=${timeoutMs}` +
+            ` errorName=HttpError errorMsg=${errMsg} retrying=false finalResult=${errMsg}`,
+          );
+        }
+        return { data: null, error: errMsg, attempts: attempt, finalErrorMessage: errMsg };
+      }
+
+      const body = (await res.json()) as ApiFinancialsResponse;
+      if (debug) {
+        debugLog(
+          `${ticker} attempt ${attempt}/${maxAttempts} url=${url} timeoutMs=${timeoutMs}` +
+          ` finalResult=success`,
+        );
+      }
+      return { data: body, error: body.error ?? null, attempts: attempt, finalErrorMessage: null };
+
+    } catch (err: unknown) {
+      const e       = err instanceof Error ? err : null;
+      lastErrorName = e?.name    ?? "UnknownError";
+      lastErrorMsg  = e?.message ?? String(err);
+
+      if (debug) {
+        debugLog(
+          `${ticker} attempt ${attempt}/${maxAttempts} url=${url} timeoutMs=${timeoutMs}` +
+          ` errorName=${lastErrorName} errorMsg=${lastErrorMsg} retrying=${willRetry}`,
+        );
+      }
+
+      if (willRetry && retryDelayMs > 0) await sleep(retryDelayMs);
+    }
   }
+
+  // All attempts exhausted — build descriptive error
+  const isConnRefused = lastErrorMsg.includes("ECONNREFUSED");
+  const isTimeout     = lastErrorName === "TimeoutError" || lastErrorMsg.toLowerCase().includes("timeout");
+
+  let finalErrorMessage: string;
+  if (isConnRefused) {
+    finalErrorMessage = "server not running";
+  } else if (isTimeout) {
+    finalErrorMessage = `timeout after ${timeoutMs}ms after ${maxAttempts} attempt(s)`;
+  } else {
+    finalErrorMessage = `fetch failed after ${maxAttempts} attempt(s): ${lastErrorMsg}`;
+  }
+
+  if (debug) debugLog(`${ticker} final: ${finalErrorMessage}`);
+
+  return { data: null, error: finalErrorMessage, attempts: maxAttempts, finalErrorMessage };
 }
 
 // ─── Audit row ────────────────────────────────────────────────────────────────
 
 interface AuditRow {
-  ticker:          string;
-  tradingName:     string;
-  companyName:     string;
-  coverageStatus:  CoverageStatus;
-  hasCvmMapping:   boolean;
-  cvmCode:         string | null;
+  ticker:            string;
+  tradingName:       string;
+  companyName:       string;
+  coverageStatus:    CoverageStatus;
+  hasCvmMapping:     boolean;
+  cvmCode:           string | null;
   // API results
-  fetchError:      string | null;
-  yearsReturned:   number;
-  latestYear:      number | null;
-  revenue:         number | null;
-  ebit:            number | null;
-  netIncome:       number | null;
-  ocf:             number | null;
-  capex:           number | null;
-  fcf:             number | null;
-  netDebt:         number | null;
+  fetchError:        string | null;
+  yearsReturned:     number;
+  latestYear:        number | null;
+  revenue:           number | null;
+  ebit:              number | null;
+  netIncome:         number | null;
+  ocf:               number | null;
+  capex:             number | null;
+  fcf:               number | null;
+  netDebt:           number | null;
   // Eligibility
-  assetEligible:   boolean;
-  assetReason:     string | null;
-  dataEligible:    boolean;
-  dataReason:      string | null;
-  overallEligible: boolean;
-  eligibleReason:  string | null;
+  assetEligible:     boolean;
+  assetReason:       string | null;
+  dataEligible:      boolean;
+  dataReason:        string | null;
+  overallEligible:   boolean;
+  eligibleReason:    string | null;
+  // Fetch metadata
+  attempts:          number;
+  timeoutMs:         number;
+  retries:           number;
+  finalErrorMessage: string | null;
 }
 
-async function auditTicker(asset: B3Asset, baseUrl: string): Promise<AuditRow> {
+async function auditTicker(asset: B3Asset, baseUrl: string, opts: FetchOpts): Promise<AuditRow> {
   const cvmEntry  = getCvmCompanyByTicker(asset.ticker);
   const cvmCode   = cvmEntry?.cvmCode ?? null;
 
   const assetReason   = assetEligibilityReason(asset);
   const assetEligible = assetReason === null;
 
-  let fetchError:  string | null = null;
+  let fetchError: string | null = null;
   let years: NormalizedFinancials[] = [];
-  let latestYear:  number | null    = null;
-  let revenue:     number | null    = null;
-  let ebit:        number | null    = null;
-  let netIncome:   number | null    = null;
-  let ocf:         number | null    = null;
-  let capex:       number | null    = null;
-  let fcf:         number | null    = null;
-  let netDebt:     number | null    = null;
+  let latestYear: number | null = null;
+  let revenue:    number | null = null;
+  let ebit:       number | null = null;
+  let netIncome:  number | null = null;
+  let ocf:        number | null = null;
+  let capex:      number | null = null;
+  let fcf:        number | null = null;
+  let netDebt:    number | null = null;
 
-  const { data, error } = await fetchFinancials(asset.ticker, baseUrl);
+  const { data, error, attempts, finalErrorMessage } = await fetchFinancials(asset.ticker, baseUrl, opts);
   fetchError = error;
 
   if (data && Array.isArray(data.financials)) {
@@ -189,19 +298,19 @@ async function auditTicker(asset: B3Asset, baseUrl: string): Promise<AuditRow> {
     if (years.length > 0) {
       const latest = [...years].sort((a, b) => b.fiscalYear - a.fiscalYear)[0];
       latestYear = latest.fiscalYear;
-      revenue    = latest.revenue         ?? null;
-      ebit       = latest.ebit            ?? null;
-      netIncome  = latest.netIncome       ?? null;
+      revenue    = latest.revenue           ?? null;
+      ebit       = latest.ebit              ?? null;
+      netIncome  = latest.netIncome         ?? null;
       ocf        = latest.operatingCashFlow ?? null;
-      capex      = latest.capex           ?? null;
-      fcf        = latest.freeCashFlow    ?? null;
-      netDebt    = latest.netDebt         ?? null;
+      capex      = latest.capex             ?? null;
+      fcf        = latest.freeCashFlow      ?? null;
+      netDebt    = latest.netDebt           ?? null;
     }
   }
 
-  const dataReason    = dataEligibilityReason(years);
-  const dataEl        = dataReason === null;
-  const overallEl     = assetEligible && dataEl;
+  const dataReason = dataEligibilityReason(years);
+  const dataEl     = dataReason === null;
+  const overallEl  = assetEligible && dataEl;
   const eligibleReason: string | null = !assetEligible
     ? assetReason
     : !dataEl
@@ -231,6 +340,10 @@ async function auditTicker(asset: B3Asset, baseUrl: string): Promise<AuditRow> {
     dataReason,
     overallEligible: overallEl,
     eligibleReason,
+    attempts,
+    timeoutMs:       opts.timeoutMs,
+    retries:         opts.retries,
+    finalErrorMessage,
   };
 }
 
@@ -360,28 +473,32 @@ function outputJson(rows: AuditRow[], summary: Summary): void {
     generatedAt: new Date().toISOString(),
     summary,
     rows: rows.map(r => ({
-      ticker:          r.ticker,
-      tradingName:     r.tradingName,
-      companyName:     r.companyName,
-      coverageStatus:  r.coverageStatus,
-      hasCvmMapping:   r.hasCvmMapping,
-      cvmCode:         r.cvmCode,
-      fetchError:      r.fetchError,
-      yearsReturned:   r.yearsReturned,
-      latestYear:      r.latestYear,
-      latestRevenue:   r.revenue,
-      latestEbit:      r.ebit,
-      latestNetIncome: r.netIncome,
-      latestOcf:       r.ocf,
-      latestCapex:     r.capex,
-      latestFcf:       r.fcf,
-      latestNetDebt:   r.netDebt,
-      assetEligible:   r.assetEligible,
-      assetReason:     r.assetReason,
-      dataEligible:    r.dataEligible,
-      dataReason:      r.dataReason,
-      overallEligible: r.overallEligible,
-      eligibleReason:  r.eligibleReason,
+      ticker:            r.ticker,
+      tradingName:       r.tradingName,
+      companyName:       r.companyName,
+      coverageStatus:    r.coverageStatus,
+      hasCvmMapping:     r.hasCvmMapping,
+      cvmCode:           r.cvmCode,
+      fetchError:        r.fetchError,
+      yearsReturned:     r.yearsReturned,
+      latestYear:        r.latestYear,
+      latestRevenue:     r.revenue,
+      latestEbit:        r.ebit,
+      latestNetIncome:   r.netIncome,
+      latestOcf:         r.ocf,
+      latestCapex:       r.capex,
+      latestFcf:         r.fcf,
+      latestNetDebt:     r.netDebt,
+      assetEligible:     r.assetEligible,
+      assetReason:       r.assetReason,
+      dataEligible:      r.dataEligible,
+      dataReason:        r.dataReason,
+      overallEligible:   r.overallEligible,
+      eligibleReason:    r.eligibleReason,
+      attempts:          r.attempts,
+      timeoutMs:         r.timeoutMs,
+      retries:           r.retries,
+      finalErrorMessage: r.finalErrorMessage,
     })),
   };
   console.log(JSON.stringify(output, null, 2));
@@ -390,7 +507,8 @@ function outputJson(rows: AuditRow[], summary: Summary): void {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
-  const { baseUrl, singleTicker, json } = parseArgs();
+  const { baseUrl, singleTicker, json, timeoutMs, retries, retryDelayMs, debug } = parseArgs();
+  const fetchOpts: FetchOpts = { timeoutMs, retries, retryDelayMs, debug };
 
   const TARGET_STATUSES: CoverageStatus[] = ["cvm_financials", "valuation_available"];
 
@@ -408,11 +526,12 @@ async function main(): Promise<void> {
   if (!json) {
     console.log();
     console.log(colored("CVM Financials Audit", BOLD));
-    console.log(`Base URL  : ${baseUrl}`);
-    console.log(`Checking  : ${assets.length} ticker(s)`);
-    console.log(`Statuses  : cvm_financials + valuation_available`);
+    console.log(`Base URL   : ${baseUrl}`);
+    console.log(`Checking   : ${assets.length} ticker(s)`);
+    console.log(`Timeout    : ${timeoutMs}ms  Retries: ${retries}  RetryDelay: ${retryDelayMs}ms`);
+    console.log(`Statuses   : cvm_financials + valuation_available`);
     console.log(
-      `Note      : All monetary values in BRL billions (R$B). ` +
+      `Note       : All monetary values in BRL billions (R$B). ` +
       `Eligibility = preliminary CVM valuation flow.`,
     );
   }
@@ -421,7 +540,7 @@ async function main(): Promise<void> {
   const rows: AuditRow[] = [];
   for (const asset of assets) {
     if (!json) process.stdout.write(`  Fetching ${asset.ticker}…\r`);
-    const row = await auditTicker(asset, baseUrl);
+    const row = await auditTicker(asset, baseUrl, fetchOpts);
     rows.push(row);
   }
 
