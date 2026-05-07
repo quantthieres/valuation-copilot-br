@@ -9,7 +9,7 @@ import { COVERAGE_BADGE } from "@/data/coverage-types";
 const NAV_LINKS = [
   { label: "Painel",      href: "/"           },
   { label: "Metodologia", href: "/metodologia" },
-  { label: "Sobre",       href: "#"            },
+  { label: "Sobre",       href: "/sobre"        },
 ];
 
 interface NavBarProps {
