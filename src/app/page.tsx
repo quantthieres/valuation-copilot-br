@@ -12,6 +12,7 @@ import MultiplesTable from "@/components/dashboard/MultiplesTable";
 import NewsPanel from "@/components/dashboard/NewsPanel";
 import RecalcToast from "@/components/dashboard/RecalcToast";
 import DcfProjectionTable from "@/components/dashboard/DcfProjectionTable";
+import CvmFinancialsTable from "@/components/dashboard/CvmFinancialsTable";
 import { getCompanyData, DEFAULT_DATA } from "@/data/companies";
 import { B3_UNIVERSE } from "@/data/b3-universe";
 import type { MarketDataQuote } from "@/lib/market-data/types";
@@ -219,11 +220,12 @@ export default function Home() {
             {activeTab === "Financeiros" && (
               <div style={{ maxWidth: 900 }}>
                 <HistoricalChart data={companyData.financials} />
+                <CvmFinancialsTable ticker={selectedTicker} enabled={true} />
                 <div style={{
-                  marginTop: 14, background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10,
-                  padding: "20px 24px", fontSize: 13, color: "#64748b", textAlign: "center",
+                  background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10,
+                  padding: "14px 18px", fontSize: 12, color: "#94a3b8", lineHeight: 1.6,
                 }}>
-                  Demonstrativos financeiros completos (DRE, Balanço Patrimonial, DFC) em breve.
+                  Os dados CVM exibidos acima vêm da DFP anual consolidada e ainda estão em validação. O dashboard principal continuará usando dados mockados até a normalização ser validada.
                 </div>
               </div>
             )}
