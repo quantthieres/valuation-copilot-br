@@ -1,7 +1,7 @@
 import React from "react";
 
 interface Props {
-  sourceMode: "mock" | "cvm";
+  sourceMode: "mock" | "cvm" | "preliminary_cvm";
   hasCvmData?: boolean;
   quoteSource?: "brapi" | "mock" | null;
 }
@@ -33,6 +33,29 @@ function Chip({ text, s }: { text: string; s: BadgeStyle }) {
 export default function DataSourceNotice({ sourceMode, hasCvmData, quoteSource }: Props) {
   const quoteStyle = quoteSource === "brapi" ? BS.brapi : BS.mock;
   const quoteLabel = quoteSource === "brapi" ? "Cotação: brapi" : "Cotação: mock";
+
+  if (sourceMode === "preliminary_cvm") {
+    return (
+      <div style={card("#ddd6fe")}>
+        <Row>
+          <Title color="#5b21b6">Valuation preliminar · Dados CVM</Title>
+          <Chips>
+            <Chip text="Receita: CVM"          s={BS.cvm} />
+            <Chip text="EBIT: CVM"             s={BS.cvm} />
+            <Chip text="FCF: Calculado"        s={BS.calculated} />
+            <Chip text="Dívida: Calculada"     s={BS.calculated} />
+            <Chip text={quoteLabel}            s={quoteStyle} />
+          </Chips>
+        </Row>
+        <Body>
+          Valuation preliminar com dados CVM. Os dados financeiros são extraídos da DFP
+          anual consolidada e alguns campos são normalizados ou calculados. Premissas de
+          valuation são estimativas conservadoras. Este resultado ainda está em validação
+          e não constitui recomendação de investimento.
+        </Body>
+      </div>
+    );
+  }
 
   if (sourceMode === "mock") {
     return (
