@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   isPreliminaryEligible,
+  dataEligibilityReason,
   buildPreliminaryCompanyDataFromCvm,
 } from "./cvm-valuation-builder";
 import type { B3Asset } from "@/data/b3-universe";
@@ -288,5 +289,119 @@ describe("buildPreliminaryCompanyDataFromCvm — sensitivity ranges", () => {
     const { terminalGrowthVals } = build()!;
     expect(Array.isArray(terminalGrowthVals)).toBe(true);
     expect(terminalGrowthVals!.length).toBeGreaterThan(0);
+  });
+});
+
+// ─── dataEligibilityReason ────────────────────────────────────────────────────
+
+// Fixture: latest year has all fields set to 0 (TIMS3-like pattern)
+const ALL_ZERO_LATEST = THREE_YEARS.map(f =>
+  f.fiscalYear === 2023
+    ? { ...f, revenue: 0, ebit: 0, netIncome: 0, operatingCashFlow: 0,
+        capex: 0, freeCashFlow: 0, netDebt: 0 }
+    : f,
+);
+
+// Fixture: revenue > 0 but all other tracked fields are zero
+const ALL_OTHER_FIELDS_ZERO = THREE_YEARS.map(f =>
+  f.fiscalYear === 2023
+    ? { ...f, ebit: 0, netIncome: 0, operatingCashFlow: 0,
+        capex: 0, freeCashFlow: 0, netDebt: 0 }
+    : f,
+);
+
+// Fixture: revenue > 0, capex and netDebt non-zero, but income metrics all undefined
+const NO_INCOME_METRICS: NormalizedFinancials[] = [
+  { ...THREE_YEARS[0] },
+  { ...THREE_YEARS[1] },
+  {
+    ticker: "PETR4",
+    fiscalYear: 2023,
+    revenue: 200,
+    capex: 15,
+    netDebt: 80,
+    // ebit, netIncome, operatingCashFlow, freeCashFlow intentionally absent
+  },
+];
+
+describe("dataEligibilityReason", () => {
+  it("returns null for valid financials (no rejection reason)", () => {
+    expect(dataEligibilityReason(THREE_YEARS)).toBeNull();
+  });
+
+  it("returns a reason string containing 'year' for fewer than 3 years", () => {
+    expect(dataEligibilityReason([THREE_YEARS[0]])).toContain("year");
+    expect(dataEligibilityReason([THREE_YEARS[0], THREE_YEARS[1]])).toContain("year");
+  });
+
+  it("returns 'only 0 year(s) of data' for empty array", () => {
+    expect(dataEligibilityReason([])).toBe("only 0 year(s) of data");
+  });
+
+  it("returns 'latest revenue missing' when revenue is undefined in latest year", () => {
+    const noRevenue = THREE_YEARS.map(f =>
+      f.fiscalYear === 2023 ? { ...f, revenue: undefined } : f,
+    );
+    expect(dataEligibilityReason(noRevenue)).toBe("latest revenue missing");
+  });
+
+  it("returns 'latest revenue <= 0' when revenue is 0 in latest year (TIMS3 pattern)", () => {
+    expect(dataEligibilityReason(ALL_ZERO_LATEST)).toBe("latest revenue <= 0");
+  });
+
+  it("returns 'latest revenue <= 0' when revenue is explicitly negative", () => {
+    const negRevenue = THREE_YEARS.map(f =>
+      f.fiscalYear === 2023 ? { ...f, revenue: -1 } : f,
+    );
+    expect(dataEligibilityReason(negRevenue)).toBe("latest revenue <= 0");
+  });
+
+  it("returns 'all latest metrics are zero' when revenue > 0 but all other fields are zero", () => {
+    expect(dataEligibilityReason(ALL_OTHER_FIELDS_ZERO)).toBe("all latest metrics are zero");
+  });
+
+  it("returns 'no usable income/cash-flow metric' when income metrics are absent", () => {
+    expect(dataEligibilityReason(NO_INCOME_METRICS)).toBe("no usable income/cash-flow metric");
+  });
+
+  it("passes when ebit is undefined but netIncome is non-zero", () => {
+    const noEbit = THREE_YEARS.map(f =>
+      f.fiscalYear === 2023 ? { ...f, ebit: undefined } : f,
+    );
+    expect(dataEligibilityReason(noEbit)).toBeNull();
+  });
+
+  it("passes when ocf is undefined but ebit is non-zero", () => {
+    const noOcf = THREE_YEARS.map(f =>
+      f.fiscalYear === 2023 ? { ...f, operatingCashFlow: undefined } : f,
+    );
+    expect(dataEligibilityReason(noOcf)).toBeNull();
+  });
+});
+
+// ─── builder — hardened null cases ───────────────────────────────────────────
+
+describe("buildPreliminaryCompanyDataFromCvm — hardened null cases", () => {
+  it("returns null when latest revenue is 0 (zero-revenue row)", () => {
+    expect(build(ALL_ZERO_LATEST)).toBeNull();
+  });
+
+  it("returns null when latest revenue is negative", () => {
+    const negRevenue = THREE_YEARS.map(f =>
+      f.fiscalYear === 2023 ? { ...f, revenue: -50 } : f,
+    );
+    expect(build(negRevenue)).toBeNull();
+  });
+
+  it("returns null when all latest metrics are zero despite valid revenue in prior years", () => {
+    expect(build(ALL_OTHER_FIELDS_ZERO)).toBeNull();
+  });
+
+  it("returns null when no income/cash-flow metric is available", () => {
+    expect(build(NO_INCOME_METRICS)).toBeNull();
+  });
+
+  it("returns non-null for valid companies (regression: no false rejections)", () => {
+    expect(build(THREE_YEARS)).not.toBeNull();
   });
 });

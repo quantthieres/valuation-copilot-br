@@ -28,16 +28,41 @@ export function isPreliminaryEligible(b3Entry: B3Asset): boolean {
   );
 }
 
-function dataEligible(financials: NormalizedFinancials[]): boolean {
-  if (financials.length < 3) return false;
+/**
+ * Returns null when the financials are usable for preliminary valuation,
+ * or a human-readable reason string when they are not.
+ *
+ * Exported so the audit script and tests can reuse it directly.
+ */
+export function dataEligibilityReason(financials: NormalizedFinancials[]): string | null {
+  if (financials.length < 3) {
+    return `only ${financials.length} year(s) of data`;
+  }
+
   const latest = [...financials].sort((a, b) => b.fiscalYear - a.fiscalYear)[0];
-  if (latest.revenue === undefined) return false;
-  return (
-    latest.ebit              !== undefined ||
-    latest.netIncome         !== undefined ||
-    latest.operatingCashFlow !== undefined ||
-    latest.freeCashFlow      !== undefined
-  );
+
+  if (latest.revenue === undefined) return "latest revenue missing";
+  if (latest.revenue <= 0)          return "latest revenue <= 0";
+
+  // All non-revenue key fields are zero or absent — data looks malformed
+  const otherMetrics = [
+    latest.ebit, latest.netIncome, latest.operatingCashFlow,
+    latest.capex, latest.freeCashFlow, latest.netDebt,
+  ];
+  if (otherMetrics.every(v => v === undefined || v === 0)) {
+    return "all latest metrics are zero";
+  }
+
+  // At least one income/CF metric must be non-zero for DCF assumptions
+  const hasUsable =
+    (latest.ebit              !== undefined && latest.ebit              !== 0) ||
+    (latest.netIncome         !== undefined && latest.netIncome         !== 0) ||
+    (latest.operatingCashFlow !== undefined && latest.operatingCashFlow !== 0) ||
+    (latest.freeCashFlow      !== undefined && latest.freeCashFlow      !== 0);
+
+  if (!hasUsable) return "no usable income/cash-flow metric";
+
+  return null;
 }
 
 // ─── Formatting ───────────────────────────────────────────────────────────────
@@ -53,7 +78,9 @@ function fmtB(v: number): string {
  *
  * Returns null when:
  * - fewer than 3 fiscal years of data
- * - latest year has no revenue
+ * - latest revenue is missing or <= 0
+ * - all key metrics are zero (malformed data)
+ * - no usable income/CF metric exists for DCF assumptions
  * - marketCap or price are unavailable (cannot estimate sharesOutstanding)
  *
  * The result is labelled "Preliminar" and carries conservative default
@@ -64,7 +91,7 @@ export function buildPreliminaryCompanyDataFromCvm(
 ): CompanyData | null {
   const { b3Entry, cvmFinancials, marketQuote } = params;
 
-  if (!dataEligible(cvmFinancials)) return null;
+  if (dataEligibilityReason(cvmFinancials) !== null) return null;
 
   const sorted = [...cvmFinancials].sort((a, b) => b.fiscalYear - a.fiscalYear);
   const latest = sorted[0];
